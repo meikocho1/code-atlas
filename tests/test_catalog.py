@@ -113,6 +113,10 @@ class CatalogTests(unittest.TestCase):
         destination = self.root / "exported.md"
         cli("history", "export", run["id"], str(destination))
         self.assertEqual(destination.read_text(), report.read_text())
+        html_destination = self.root / "exported.html"
+        cli("history", "export", run["id"], str(html_destination), "--format", "html")
+        self.assertIn("<title>Review</title>", html_destination.read_text(encoding="utf-8"))
+        self.assertEqual(destination.read_text(), report.read_text())
 
     def test_range_history_resolves_selected_revisions(self):
         original = git(self.repo, "rev-parse", "HEAD")

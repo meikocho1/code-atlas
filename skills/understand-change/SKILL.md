@@ -27,13 +27,15 @@ Default to three lenses, kept proportionate to the change:
 - **SYSTEM:** Which boundaries, data, or runtime interactions change.
 - **CODE:** The key implementation mechanism, including significant conditions or failure handling.
 
-The lenses are headings for different questions, not a requirement to repeat the same fact three times. For a tiny change, one sentence per lens is enough.
+The lenses answer different questions, not a requirement to repeat the same fact three times. Write for the reader before choosing headings: lead with the practical result in plain language, then explain where it happens and the decisive code. Keep BUSINESS / SYSTEM / CODE identifiable where relevant. For a tiny change, a short answer is better than three nearly empty sections.
 
 Before drawing, state the reader question that a picture would answer. Use [diagram selection](references/diagram-selection.md) to select at most the views that add information. Prefer one focused diagram; use a second only when it answers a distinct important question. A small rename, copy edit, isolated constant, or local refactor often needs **no diagram**. Never draw one merely to fill a layer.
 
 ## 4. Deliver a verifiable explanation
 
-Give the change scope, a one-sentence summary, and the three lenses. If a diagram helps, place it near the lens it explains and use Mermaid unless the requested output format requires another form. Label actors, edges, and transitions with observed behavior; keep one abstraction level per diagram and remove unrelated nodes. Add a one-sentence text explanation for each diagram. A Before/After table is often clearer than Mermaid for a simple behavior change.
+Open with a descriptive title and one plain-language sentence stating what changed and for whom; put the exact scope in a compact line nearby. Then give the BUSINESS outcome (including a relevant exception), the SYSTEM path, and the CODE rule in that order. Use short paragraphs or a small table rather than long bullet lists. Explain a technical term the first time a nontechnical reader needs it. Put source references next to the claim they support; reserve a closing note for meaningful uncertainty instead of collecting all evidence in a dense footer.
+
+If a diagram helps, place it beside the explanation it clarifies. Use Mermaid when the destination supports it or support is unknown; when rendering is known to be unavailable, use a readable text flow or table rather than making raw Mermaid the main explanation. Label actors, edges, and transitions with observed behavior; keep one abstraction level per diagram and remove unrelated nodes. Introduce the diagram with what to look for, and follow it with a one-sentence text explanation. A Before/After table is often clearer than Mermaid for a simple behavior change. Never add a diagram solely to make a Markdown report look visual.
 
 Finish with evidence links or `path:line` references and any meaningful uncertainty. Explain only what the code supports. Do not turn possible defects into confirmed failures; if the user asks for review, use a review workflow instead.
 

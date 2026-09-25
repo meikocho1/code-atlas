@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 from .git import GitError, inspect_repo, resolve_ref, worktree_fingerprint
+from .html_report import render_html
 from .refs import check_refs, find_refs
 from .store import Store
 
@@ -60,6 +61,11 @@ def parser() -> argparse.ArgumentParser:
     export = history_actions.add_parser("export", help="Write a saved report to a new file")
     export.add_argument("id")
     export.add_argument("destination")
+    export.add_argument("--format", choices=("md", "html"), default="md")
+
+    render = groups.add_parser("render", help="Render a Markdown report as HTML")
+    render.add_argument("--report", required=True, help="Markdown report file, or - for stdin")
+    render.add_argument("destination", help="New .html file to create")
 
     refs = groups.add_parser("check-refs", help="Check that a report's path:line references exist")
     refs.add_argument("--repo", default=".", help="Repository the report describes")
@@ -153,9 +159,12 @@ def execute(args: argparse.Namespace, store: Store) -> object:
     row = store.get_run(args.id)
     if args.action == "export":
         destination = Path(args.destination).expanduser()
+        if args.format == "html":
+            rendered = render_html(row["report"], destination)
+            return {"id": args.id, "destination": str(rendered), "format": "html"}
         with destination.open("x", encoding="utf-8") as stream:
             stream.write(row["report"])
-        return {"id": args.id, "destination": str(destination.resolve())}
+        return {"id": args.id, "destination": str(destination.resolve()), "format": "md"}
     return dict(row)
 
 
@@ -177,8 +186,12 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"{item['path']}:{span}\t{item['problem']}")
                 print(f"{len(results) - len(problems)}/{len(results)} references resolve in {rev or 'the working tree'}")
             return 1 if problems else 0
-        with Store() as store:
-            result = execute(args, store)
+        if args.group == "render":
+            destination = render_html(_report_text(args.report), Path(args.destination))
+            result = {"destination": str(destination), "format": "html"}
+        else:
+            with Store() as store:
+                result = execute(args, store)
         if args.json:
             print(json.dumps(result, ensure_ascii=False, indent=2))
         elif isinstance(result, list):

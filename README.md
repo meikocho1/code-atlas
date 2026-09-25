@@ -25,7 +25,9 @@ Code Atlas は、既存プロジェクトや変更を根拠付きで説明する
 | SYSTEM | コンポーネント、データ、実行時の流れはどう変わるか |
 | CODE | どの条件や処理が変更を実現するか |
 
-図は説明に必要な場合だけ選びます。候補は Business Flow、Sequence、State、ER、Architecture/Component、Before/After です。小さな変更や図より文章が明快な変更には図を作りません。各主張と図の関係は差分または関連コードで裏付けます。
+レポートは最初に**一文の結論**と**利用者への影響**を置き、その後に仕組みとコード上の根拠を示します。BUSINESS では専門用語を避け、誰が何をできるか、例外ではどうなるかを説明します。小さな変更は短い文章、条件の比較は表、手順や分岐は Business Flow など、読み手の疑問に合う形を選びます。
+
+図の候補は Business Flow、Sequence、State、ER、Architecture/Component です。図は説明に必要な場合だけ使い、一つの図では一つの問いに答えます。Mermaid を表示できない環境では、読める文章や表で流れを伝えます。各主張と図の関係は差分または関連コードで裏付けます。[変更説明の例](examples/sample-explanation.md)と[業務フローの例](examples/business-flow.md)では、結論から読み始め、必要なら図と実装を追える構成を示しています。
 
 ## 構成
 
@@ -49,7 +51,7 @@ code-atlas/
 │   ├── er.md
 │   ├── state.md
 │   └── c4.md
-├── code_atlas/                 # 分類・履歴CLI
+├── code_atlas/                 # 分類・履歴CLI、HTMLレポート表示
 ├── bin/code-atlas              # 依存パッケージ不要の実行入口
 ├── eval/                       # Skillの評価シナリオとハーネス
 ├── tests/                      # CLIと評価ハーネスのテスト
@@ -58,7 +60,8 @@ code-atlas/
 │   └── check-skills.py         # Skill単体配布の検証
 └── examples/
     ├── fixture-walkthrough.md
-    └── sample-explanation.md
+    ├── sample-explanation.md
+    └── business-flow.md
 ```
 
 `skills/<name>/` が単体の配布単位です。ルートの `references/` は設計ガイドであり、Skillが実行時に必要とする参照はSkillフォルダ内に収めています。
@@ -110,11 +113,12 @@ cp -R "$ATLAS_DIR/skills/understand-change" .claude/skills/
 
 同名Skillを個人用とプロジェクト用の両方に置くと選択が紛らわしくなるため、同じ環境ではどちらを使うか決めてください。複数Skillを配布する場合はプラグイン化も可能です。
 
-対象リポジトリで「`understand-change` を使い、今の変更を BUSINESS / SYSTEM / CODE で説明して」と依頼します。Skill名を明示して呼ぶ方法はエージェントごとに違います。Claude Code は `/understand-change`、Codex は `$understand-change`、pi は `/skill:understand-change` です。OpenCode・Gemini CLI・Cursor では、依頼文でSkill名を挙げて頼みます。コミットやブランチを指定したいときは依頼文に含めます。
+対象リポジトリで「`understand-change` を使い、今回の変更を利用者への影響から説明して」と依頼します。Skill名を明示して呼ぶ方法はエージェントごとに違います。Claude Code は `/understand-change`、Codex は `$understand-change`、pi は `/skill:understand-change` です。OpenCode・Gemini CLI・Cursor では、依頼文でSkill名を挙げて頼みます。コミットやブランチを指定したいときは依頼文に含めます。
 
 ```text
 $understand-change 直近のコミットを説明して。必要なら図を選んでください。
 $understand-change main との差分を、業務影響から説明してください。
+$explain-business この変更で利用者ができることを、専門用語を使わずに説明してください。
 ```
 
 `understand-change` の既定対象は作業ツリーの staged、unstaged、関連する untracked の変更です。作業ツリーが空なら直近コミットを対象として明示します。リポジトリ全体の説明には `understand-project` を使います。
@@ -144,6 +148,17 @@ python3 -m code_atlas check-refs --repo /path/to/repository --rev HEAD --report 
 `check-refs` はレポート中の `path:line` と `path:開始-終了` を抜き出し、ファイルが存在して行番号がその範囲内にあるかを確かめます。`--rev` を付けるとそのコミットのファイルに、付けなければ作業ツリーに照合し、問題があれば終了コード1を返します。確かめるのは参照先の実在だけで、書かれた内容の正しさは判定しません。各Skillは `code-atlas` が入っていれば、報告前にこれで参照を確認します。
 
 レポートの履歴保存は明示的に行います。Skillへ「この説明をCode Atlasの履歴に保存して」と依頼しても構いません。その場合Skillはレポートを `--report -`（標準入力）で渡し、対象リポジトリにファイルを作りません。変更のない作業ツリーを `--scope worktree` で記録しようとするとエラーになるので、コミット済みの内容は `--scope commit` で記録します。`--project` にはプロジェクトIDのほか、リポジトリ内の任意のディレクトリも指定できます。`CODE_ATLAS_DATA_DIR` でデータベースの保存先を変更できます。未コミット変更の履歴には差分本体を保存せず、その時点の内容のハッシュを記録します。そのため後からコードが変わると同じ状態を完全には再現できません。共有したいレポートは `history export` で書き出せます。
+
+### 読みやすいHTMLレポート
+
+Markdownのレポートを、目次・結論の強調・業務影響を先に示す構成を備えたHTMLに変換できます。Quartoを参考にしたCode Atlas専用の表示機能で、Python標準ライブラリだけで生成します。元のMarkdownと履歴は変わりません。
+
+```bash
+python3 -m code_atlas render --report /path/to/report.md /path/to/report.html
+python3 -m code_atlas history export RUN_ID /path/to/saved-report.html --format html
+```
+
+出力はCSSを含む1つのHTMLファイルです。Mermaid図だけは表示時に外部のMermaidライブラリを読み込むため、図の描画にはインターネット接続が必要です。オフラインでも本文と図の元テキストは読めます。見出し、段落、箇条書き、表、引用、コードブロック、リンクというCode Atlasのレポート書式を対象にしており、複雑なMarkdownの完全再現は目的としていません。HTML内ではレポートに含まれる生のHTMLを文字として表示します。レポート内の `path:line` は根拠として表示しますが、Whiteboardのようなコードへのジャンプ機能はありません。既存ファイルへの上書きはしません。見た目は [`report.css`](code_atlas/report.css) で調整できます。
 
 ## 設計思想
 

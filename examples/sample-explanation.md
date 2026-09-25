@@ -1,32 +1,33 @@
-# Example output from the fixture
+# 注文をキャンセルできる条件が増えました
 
-**Scope:** `Baseline order lifecycle` commit → current worktree, including untracked `test_order.py`.
+**結論:** 未発送の注文はキャンセルできます。支払い済みなら「返金が必要」という合図を返しますが、返金処理そのものは行いません。
 
-**Summary:** An order can now move from `new` or `paid` to `cancelled`; cancelling a paid order signals that a refund is needed.
+**対象:** `Baseline order lifecycle` コミットから現在の作業ツリーまで。未追跡の `test_order.py` を含みます。
 
-## BUSINESS
+## 利用者への影響（BUSINESS）
 
-An unshipped order can be cancelled. A paid cancellation returns a refund-needed signal, but this change does not issue the refund. The fixture has no user interface, so it does not show who can trigger cancellation (`order.py:21-27`, `README.md:4`).
+- 新規・支払い済みの注文はキャンセルできます。発送済みの注文はキャンセルできません（`order.py:21-27`）。
+- 支払い済みの注文をキャンセルすると、返金が必要かどうかをこの機能を使う別の処理に伝えます。利用者が画面上でどう操作するかは、このコードからは分かりません（`order.py:21-27`, `README.md:4`）。
 
-## SYSTEM
+## どこで起きるか（SYSTEM）
 
-The state change happens in one in-memory `Order` module. No database, payment service, or API call is present in the changed path (`order.py:4-6`, `order.py:21-27`).
+注文の状態は実行中のメモリに保持され、`order.py` 内で変更されます。データベースや決済サービスへの連絡は、この処理にはありません（`order.py:4-6`, `order.py:21-27`）。
 
-The useful visual question is: **Which order transitions are now allowed?** A State Diagram answers it directly.
+下の図は、注文がどの状態からキャンセルできるかを示します。
 
 ```mermaid
 stateDiagram-v2
     [*] --> new
-    new --> paid: mark_paid
-    paid --> shipped: ship
-    new --> cancelled: cancel / no refund needed
-    paid --> cancelled: cancel / refund needed
+    new --> paid: 支払い
+    paid --> shipped: 発送
+    new --> cancelled: キャンセル / 返金不要
+    paid --> cancelled: キャンセル / 返金要
 ```
 
-Cancellation adds two transitions into `cancelled`; `shipped` has no cancellation transition (`order.py:9-27`).
+キャンセルできるのは `new` と `paid` からだけです。`shipped` からのキャンセル経路はありません（`order.py:9-27`）。図が表示されない環境では「新規・支払い済み → キャンセル可、発送済み → キャンセル不可」と読んでください。
 
-## CODE
+## 実装の根拠（CODE）
 
-`cancel()` accepts only `new` and `paid`, raises `ValueError` otherwise, records whether the previous state was `paid`, and then sets the state to `cancelled` (`order.py:21-27`). The new tests cover both allowed paths and rejection after shipping (`test_order.py:7-23`).
+`cancel()` は注文の状態が `new` または `paid` かを確かめ、それ以外ならエラーにします。元の状態が `paid` だったかを記録してから `cancelled` に変更します（`order.py:21-27`）。テストには両方のキャンセル経路と、発送後に拒否する例があります（`test_order.py:7-23`）。
 
-**Limit:** The Boolean return value describes refund need; payment reversal and persistence are outside this fixture. The change is uncommitted and no PR or issue was supplied, so why cancellation was added is not established; the README describes the new behavior, not its motivation.
+**確認できないこと:** 返金の実行や保存処理は、この変更に含まれていません。変更は未コミットで、PRや課題がないため、キャンセルを追加した理由も確定できません。
