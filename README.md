@@ -25,7 +25,7 @@ Code Atlas は、既存プロジェクトや変更を根拠付きで説明する
 | SYSTEM | コンポーネント、データ、実行時の流れはどう変わるか |
 | CODE | どの条件や処理が変更を実現するか |
 
-レポートは最初に**一文の結論**と**利用者への影響**を置き、その後に仕組みとコード上の根拠を示します。BUSINESS では専門用語を避け、誰が何をできるか、例外ではどうなるかを説明します。小さな変更は短い文章、条件の比較は表、手順や分岐は Business Flow など、読み手の疑問に合う形を選びます。
+レポートはHTMLファイルで渡します。最初に**一文の結論**と**利用者への影響**を置き、その後に仕組みとコード上の根拠を示します。BUSINESS では専門用語を避け、誰が何をできるか、例外ではどうなるかを説明します。小さな変更は短い文章、条件の比較は表、手順や分岐は Business Flow など、読み手の疑問に合う形を選びます。
 
 図の候補は Business Flow、Sequence、State、ER、Architecture/Component です。図は説明に必要な場合だけ使い、一つの図では一つの問いに答えます。Mermaid を表示できない環境では、読める文章や表で流れを伝えます。各主張と図の関係は差分または関連コードで裏付けます。[変更説明の例](examples/sample-explanation.md)と[業務フローの例](examples/business-flow.md)では、結論から読み始め、必要なら図と実装を追える構成を示しています。
 
@@ -151,11 +151,12 @@ python3 -m code_atlas check-refs --repo /path/to/repository --rev HEAD --report 
 
 ### 読みやすいHTMLレポート
 
-Markdownのレポートを、目次・結論の強調・業務影響を先に示す構成を備えたHTMLに変換できます。Quartoを参考にしたCode Atlas専用の表示機能で、Python標準ライブラリだけで生成します。元のMarkdownと履歴は変わりません。
+各SkillはレポートをHTMLファイルで渡します。内部で作ったMarkdown原稿を、目次・結論の強調・業務影響を先に示す構成を備えたHTMLに変換します。Quartoを参考にしたCode Atlas専用の表示機能で、Python標準ライブラリだけで生成します。元のMarkdownと履歴は変わりません。HTMLファイルは解析対象のリポジトリ外に作成し、回答にリンクを添えます。
 
 ```bash
 python3 -m code_atlas render --report /path/to/report.md /path/to/report.html
-python3 -m code_atlas history export RUN_ID /path/to/saved-report.html --format html
+python3 -m code_atlas history export RUN_ID /path/to/saved-report.html
+python3 -m code_atlas history export RUN_ID /path/to/saved-report.md --format md
 ```
 
 出力はCSSを含む1つのHTMLファイルです。Mermaid図だけは表示時に外部のMermaidライブラリを読み込むため、図の描画にはインターネット接続が必要です。オフラインでも本文と図の元テキストは読めます。見出し、段落、箇条書き、表、引用、コードブロック、リンクというCode Atlasのレポート書式を対象にしており、複雑なMarkdownの完全再現は目的としていません。HTML内ではレポートに含まれる生のHTMLを文字として表示します。レポート内の `path:line` は根拠として表示しますが、Whiteboardのようなコードへのジャンプ機能はありません。既存ファイルへの上書きはしません。見た目は [`report.css`](code_atlas/report.css) で調整できます。

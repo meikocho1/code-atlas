@@ -61,7 +61,7 @@ def parser() -> argparse.ArgumentParser:
     export = history_actions.add_parser("export", help="Write a saved report to a new file")
     export.add_argument("id")
     export.add_argument("destination")
-    export.add_argument("--format", choices=("md", "html"), default="md")
+    export.add_argument("--format", choices=("md", "html"), default="html")
 
     render = groups.add_parser("render", help="Render a Markdown report as HTML")
     render.add_argument("--report", required=True, help="Markdown report file, or - for stdin")

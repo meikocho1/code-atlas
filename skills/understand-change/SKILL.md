@@ -47,6 +47,8 @@ code-atlas check-refs --repo <repository> [--rev <commit>] --report - <<'CODE_AT
 CODE_ATLAS_REPORT
 ```
 
+Deliver every report as a standalone HTML file by default, even when the user did not ask for a file. Draft the report in Markdown for reference checking, then render that same text with `code-atlas render --report - <new-report.html>` (or `python3 -m code_atlas render`). Choose a new writable output path outside the analyzed repository; never overwrite a prior report. Give the user a link to the HTML file and a brief summary in the response. If the CLI is unavailable, create a standalone HTML file with available tools; if file creation is unavailable, return the complete HTML document. Use another format only when the user explicitly requests it.
+
 When the user asks to keep the result, save the exact Markdown report with the `code-atlas` CLI. Pass it on stdin so no file is written into the target repository:
 
 ```bash

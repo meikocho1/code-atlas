@@ -111,10 +111,10 @@ class CatalogTests(unittest.TestCase):
         (self.repo / "pkg").mkdir()
         self.assertEqual(len(cli("history", "list", "--project", str(self.repo / "pkg"))), 1)
         destination = self.root / "exported.md"
-        cli("history", "export", run["id"], str(destination))
+        cli("history", "export", run["id"], str(destination), "--format", "md")
         self.assertEqual(destination.read_text(), report.read_text())
         html_destination = self.root / "exported.html"
-        cli("history", "export", run["id"], str(html_destination), "--format", "html")
+        cli("history", "export", run["id"], str(html_destination))
         self.assertIn("<title>Review</title>", html_destination.read_text(encoding="utf-8"))
         self.assertEqual(destination.read_text(), report.read_text())
 
