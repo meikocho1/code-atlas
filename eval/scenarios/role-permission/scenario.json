@@ -1,0 +1,15 @@
+{
+  "skill": "understand-change",
+  "split": "train",
+  "summary": "delete_project() was admin-only and now also allows the manager role; uncommitted; the trap is claiming the viewer role gains delete access too.",
+  "request": "Use the {skill} skill to explain the current change in BUSINESS / SYSTEM / CODE. Choose only a visual that helps. Answer in English.",
+  "base_message": "Baseline project deletion (admin only)",
+  "commit_message": null,
+  "expect": {
+    "scope": "worktree",
+    "visual": {"prefer": "none", "allow": ["flowchart"]},
+    "facts": ["ALLOWED_DELETE_ROLES", "manager", "\\badmin\\b", "delete_project"],
+    "forbidden": ["viewers? (?:can now|gains?|is now able to|are now able to) delete"],
+    "motivation": "unknown"
+  }
+}

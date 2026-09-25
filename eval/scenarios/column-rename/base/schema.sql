@@ -1,0 +1,4 @@
+CREATE TABLE customers (
+    id INTEGER PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE
+);

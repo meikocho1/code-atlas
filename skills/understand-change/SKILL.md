@@ -15,7 +15,7 @@ Use `git status --short`, `git diff --stat`, `git diff --name-status`, `git diff
 
 ## 2. Trace the behavior
 
-Read changed code and the minimum adjacent code needed to establish entry points, callers, state changes, persistence, external calls, and failure paths. Use the [focused code-reading guide](references/code-reading.md): start with a compact change map, use a structural index to retrieve relevant symbols when available, and expand one unresolved relationship at a time. A Code Wiki or other repository map can identify where to look, but verify its claims against the current diff and source. Use tests and documentation to understand intended behavior, while distinguishing that intent from behavior proven by implementation. Do not execute code from the target repository merely to explain it.
+Read changed code and the minimum adjacent code needed to establish entry points, callers, state changes, persistence, external calls, and failure paths. Use the [focused code-reading guide](references/code-reading.md): start with a compact change map, use a structural index to retrieve relevant symbols when available, and expand one unresolved relationship at a time. A Code Wiki or other repository map can identify where to look, but verify its claims against the current diff and source. Use tests and documentation to understand intended behavior, while distinguishing that intent from behavior proven by implementation. The reason for a change is not in the diff: take it only from commit messages, a PR description, an issue, or context the user supplies, and name that source (for example, “per the commit message”). Without such a source, say the motivation is not established. Do not execute code from the target repository merely to explain it.
 
 Build a short evidence chain: **changed line → enclosing behavior → affected caller or user action**. Check the relevant before and after paths, including a meaningful rejected or failure path when one changed. Every material claim and every diagram node, transition, and edge must be supported by the diff or related source. Cite file paths and line numbers where possible. If a business effect cannot be established, say so; do not infer a workflow from names alone. Mark uncertain or unverified runtime effects plainly.
 
@@ -37,4 +37,20 @@ Give the change scope, a one-sentence summary, and the three lenses. If a diagra
 
 Finish with evidence links or `path:line` references and any meaningful uncertainty. Explain only what the code supports. Do not turn possible defects into confirmed failures; if the user asks for review, use a review workflow instead.
 
-When the user asks to keep a history entry, save the exact Markdown explanation through the `code-atlas history add` CLI if it is installed. Record the actual scope and repository path; do not silently write a report into the target repository. If the CLI is unavailable, return the report and explain how to save it later.
+Before delivering, if the `code-atlas` CLI is installed, check the report's `path:line` references. Pass the draft on stdin; add `--rev <commit>` when it cites a commit or the head of a range, and omit it for the working tree. Fix or remove every reference it reports. A reference to a removed line resolves only against the base (`--rev <base>`), so check such references there.
+
+```bash
+code-atlas check-refs --repo <repository> [--rev <commit>] --report - <<'CODE_ATLAS_REPORT'
+<draft Markdown report>
+CODE_ATLAS_REPORT
+```
+
+When the user asks to keep the result, save the exact Markdown report with the `code-atlas` CLI. Pass it on stdin so no file is written into the target repository:
+
+```bash
+code-atlas history add --repo <repository> --skill understand-change --scope <scope> --report - <<'CODE_ATLAS_REPORT'
+<exact Markdown report>
+CODE_ATLAS_REPORT
+```
+
+Record the scope actually analyzed: `worktree` for uncommitted changes (no `--base`/`--head`), `commit` (add `--head <commit>` unless it is HEAD), `range` (add `--base <base> --head <head>`), `project` for a repository-wide result, or `custom`. If `code-atlas` is not installed, return the report and say it was not saved.

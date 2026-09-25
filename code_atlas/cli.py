@@ -4,15 +4,17 @@ from __future__ import annotations
 
 import argparse
 import json
+import sqlite3
 import sys
 from pathlib import Path
 
 from .git import GitError, inspect_repo, resolve_ref, worktree_fingerprint
+from .refs import check_refs, find_refs
 from .store import Store
 
 
 def parser() -> argparse.ArgumentParser:
-    root = argparse.ArgumentParser(prog="code-atlas", description="Manage projects and analysis history locally")
+    root = argparse.ArgumentParser(prog="code-atlas", description="Manage projects, analysis history, and report checks locally")
     root.add_argument("--json", action="store_true", help="Print machine-readable JSON")
     groups = root.add_subparsers(dest="group", required=True)
 
@@ -58,6 +60,11 @@ def parser() -> argparse.ArgumentParser:
     export = history_actions.add_parser("export", help="Write a saved report to a new file")
     export.add_argument("id")
     export.add_argument("destination")
+
+    refs = groups.add_parser("check-refs", help="Check that a report's path:line references exist")
+    refs.add_argument("--repo", default=".", help="Repository the report describes")
+    refs.add_argument("--rev", help="Commit whose files the report cites; defaults to the working tree")
+    refs.add_argument("--report", required=True, help="Markdown report file, or - for stdin")
     return root
 
 
@@ -66,6 +73,19 @@ def _project_dict(store: Store, row: object) -> dict:
     item["paths"] = store.paths(item["id"])
     item["tags"] = store.tags(item["id"])
     return item
+
+
+def _project(store: Store, identifier: str) -> object:
+    """Find a project by ID, registered path, or any directory inside its repository."""
+    try:
+        return store.get_project(identifier)
+    except ValueError:
+        if not Path(identifier).expanduser().is_dir():
+            raise
+        try:
+            return store.get_project(str(inspect_repo(identifier).common_dir))
+        except ValueError:  # Includes GitError.
+            raise ValueError(f"Unknown project: {identifier}") from None
 
 
 def _report_text(path: str) -> str:
@@ -86,7 +106,7 @@ def execute(args: argparse.Namespace, store: Store) -> object:
             return _project_dict(store, row)
         if args.action == "list":
             return [_project_dict(store, row) for row in store.list_projects(kind=args.kind, tag=args.tag)]
-        row = store.get_project(args.identifier)
+        row = _project(store, args.identifier)
         if args.action == "relocate":
             return _project_dict(store, store.relocate(row["id"], inspect_repo(args.new_path)))
         if args.action == "kind":
@@ -118,6 +138,8 @@ def execute(args: argparse.Namespace, store: Store) -> object:
             except GitError:
                 base_ref = None  # Root commit.
         worktree_hash = worktree_fingerprint(repo) if args.scope == "worktree" else None
+        if args.scope == "worktree" and worktree_hash is None:
+            raise ValueError("Worktree has no changes; record the analyzed commit with --scope commit")
         project = store.register(repo)
         saved = dict(store.add_run(
             project["id"], skill=args.skill.strip(), scope=args.scope, report=report,
@@ -126,7 +148,7 @@ def execute(args: argparse.Namespace, store: Store) -> object:
         saved.pop("report")
         return saved
     if args.action == "list":
-        project_id = store.get_project(args.project)["id"] if args.project else None
+        project_id = _project(store, args.project)["id"] if args.project else None
         return [dict(row) for row in store.list_runs(project_id=project_id, skill=args.skill)]
     row = store.get_run(args.id)
     if args.action == "export":
@@ -140,6 +162,21 @@ def execute(args: argparse.Namespace, store: Store) -> object:
 def main(argv: list[str] | None = None) -> int:
     args = parser().parse_args(argv)
     try:
+        if args.group == "check-refs":
+            repo = inspect_repo(args.repo)
+            rev = resolve_ref(repo, args.rev) if args.rev else None
+            results = check_refs(repo, find_refs(_report_text(args.report)), rev)
+            problems = [item for item in results if item["problem"]]
+            if args.json:
+                print(json.dumps(results, ensure_ascii=False, indent=2))
+            elif not results:
+                print("No path:line references found")
+            else:
+                for item in problems:
+                    span = f"{item['start']}-{item['end']}" if item["end"] != item["start"] else item["start"]
+                    print(f"{item['path']}:{span}\t{item['problem']}")
+                print(f"{len(results) - len(problems)}/{len(results)} references resolve in {rev or 'the working tree'}")
+            return 1 if problems else 0
         with Store() as store:
             result = execute(args, store)
         if args.json:
@@ -158,6 +195,6 @@ def main(argv: list[str] | None = None) -> int:
         else:
             print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
-    except (GitError, ValueError, OSError) as exc:
+    except (GitError, ValueError, OSError, sqlite3.Error) as exc:
         print(f"code-atlas: {exc}", file=sys.stderr)
         return 1

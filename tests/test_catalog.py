@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 from code_atlas.git import inspect_repo, worktree_fingerprint
+from code_atlas.refs import check_refs, find_refs
 from code_atlas.store import Store
 
 
@@ -107,6 +108,8 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(run["project_id"], project["id"])
         self.assertIsNone(run["base_ref"])  # The fixture's HEAD is a root commit.
         self.assertEqual(len(cli("history", "list", "--project", project["id"])), 1)
+        (self.repo / "pkg").mkdir()
+        self.assertEqual(len(cli("history", "list", "--project", str(self.repo / "pkg"))), 1)
         destination = self.root / "exported.md"
         cli("history", "export", run["id"], str(destination))
         self.assertEqual(destination.read_text(), report.read_text())
@@ -141,18 +144,42 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(commit.returncode, 0, commit.stderr)
         self.assertEqual(json.loads(commit.stdout)["base_ref"], original)
 
-    def test_worktree_record_rejects_mismatched_revision_flags(self):
+    def test_worktree_record_rejects_revision_flags_and_clean_tree(self):
         report = self.root / "report.md"
         report.write_text("# Working tree\n")
         env = dict(os.environ, CODE_ATLAS_DATA_DIR=str(self.data), PYTHONPATH=str(PROJECT_ROOT))
-        process = subprocess.run(
-            [sys.executable, "-m", "code_atlas", "history", "add", "--repo", str(self.repo),
-             "--skill", "understand-change", "--scope", "worktree", "--head", "HEAD",
-             "--report", str(report)],
-            env=env, text=True, capture_output=True,
-        )
+        command = [sys.executable, "-m", "code_atlas", "history", "add", "--repo", str(self.repo),
+                   "--skill", "understand-change", "--scope", "worktree", "--report", str(report)]
+        process = subprocess.run(command + ["--head", "HEAD"], env=env, text=True, capture_output=True)
         self.assertEqual(process.returncode, 1)
         self.assertIn("omit --base and --head", process.stderr)
+        clean = subprocess.run(command, env=env, text=True, capture_output=True)
+        self.assertEqual(clean.returncode, 1)
+        self.assertIn("--scope commit", clean.stderr)
+
+    def test_check_refs_against_worktree_and_commit(self):
+        (self.repo / "main.py").write_text("VALUE = 2\nNEXT = 3\nLAST = 4\n")
+        (self.root / "outside.txt").write_text("secret\n")
+        (self.repo / "app" / "[id]").mkdir(parents=True)
+        (self.repo / "app" / "[id]" / "page.tsx").write_text("export default 1\nexport const x = 2\n")
+        (self.repo / "link.txt").symlink_to(self.root / "outside.txt")
+        refs = find_refs("See `main.py:1`, `app/[id]/page.tsx:2`, `link.txt:1`, main.py:2-3, ./main.py:1, "
+                         "missing.py:2, ../outside.txt:1, app/[id]/page.tsx:2 at 10:52.\n")
+        self.assertEqual(refs, [("main.py", 1, 1), ("app/[id]/page.tsx", 2, 2), ("link.txt", 1, 1),
+                                ("main.py", 2, 3), ("missing.py", 2, 2), ("../outside.txt", 1, 1)])
+        repo = inspect_repo(self.repo)
+        self.assertEqual([item["problem"] is None for item in check_refs(repo, refs, None)],
+                         [True, True, False, True, False, False])
+        self.assertEqual([item["problem"] is None for item in check_refs(repo, refs, repo.head)],
+                         [True, False, False, False, False, False])
+
+        env = dict(os.environ, CODE_ATLAS_DATA_DIR=str(self.data), PYTHONPATH=str(PROJECT_ROOT))
+        command = [sys.executable, "-m", "code_atlas", "check-refs", "--repo", str(self.repo), "--report", "-"]
+        passing = subprocess.run(command, input="`main.py:1-3`\n", env=env, text=True, capture_output=True)
+        self.assertEqual(passing.returncode, 0, passing.stderr)
+        failing = subprocess.run(command + ["--rev", "HEAD"], input="`main.py:1-3`\n", env=env, text=True, capture_output=True)
+        self.assertEqual(failing.returncode, 1)
+        self.assertIn("outside 1-1", failing.stdout)
 
 
 if __name__ == "__main__":

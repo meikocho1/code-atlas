@@ -1,0 +1,19 @@
+{
+  "skill": "understand-change",
+  "split": "val",
+  "summary": "Adds a refunds table (one refund at most per order) and record_refund(); committed with the motivation in the message.",
+  "request": "Use the {skill} skill to explain the current change in BUSINESS / SYSTEM / CODE. Choose only a visual that helps. Answer in English.",
+  "base_message": "Baseline shop schema",
+  "commit_message": "Record refunds for cancelled orders\n\nSupport staff need to see whether a cancelled order was refunded. Sending money through a payment provider is out of scope.",
+  "expect": {
+    "scope": "commit",
+    "visual": {"prefer": "er", "allow": ["none", "flowchart"]},
+    "facts": ["refunds", "UNIQUE", "cancelled", "support"],
+    "forbidden": [
+      "orders\\s*\\|\\|--o\\{\\s*refunds",
+      "refunds\\s*\\}o--\\|\\|\\s*orders",
+      "payment (?:provider|service) (?:is|was|gets) (?:called|charged|contacted)"
+    ],
+    "motivation": "sourced"
+  }
+}

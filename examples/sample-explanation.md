@@ -29,4 +29,4 @@ Cancellation adds two transitions into `cancelled`; `shipped` has no cancellatio
 
 `cancel()` accepts only `new` and `paid`, raises `ValueError` otherwise, records whether the previous state was `paid`, and then sets the state to `cancelled` (`order.py:21-27`). The new tests cover both allowed paths and rejection after shipping (`test_order.py:7-23`).
 
-**Limit:** The Boolean return value describes refund need; payment reversal and persistence are outside this fixture.
+**Limit:** The Boolean return value describes refund need; payment reversal and persistence are outside this fixture. The change is uncommitted and no PR or issue was supplied, so why cancellation was added is not established; the README describes the new behavior, not its motivation.

@@ -15,4 +15,20 @@ Give the reader a usable map of the **current** repository in their language. Sc
 
 This skill explains a repository's present shape. For a selected patch use `understand-change`; for a finding-oriented review use `review-change`.
 
-When asked to retain the result, use the installed `code-atlas history add --scope project` command with the exact Markdown report and repository path. Do not silently add files to the target repository.
+Before delivering, if the `code-atlas` CLI is installed, check the report's `path:line` references. Pass the draft on stdin; add `--rev <commit>` when it cites a commit or the head of a range, and omit it for the working tree. Fix or remove every reference it reports. A reference to a removed line resolves only against the base (`--rev <base>`), so check such references there.
+
+```bash
+code-atlas check-refs --repo <repository> [--rev <commit>] --report - <<'CODE_ATLAS_REPORT'
+<draft Markdown report>
+CODE_ATLAS_REPORT
+```
+
+When the user asks to keep the result, save the exact Markdown report with the `code-atlas` CLI. Pass it on stdin so no file is written into the target repository:
+
+```bash
+code-atlas history add --repo <repository> --skill understand-project --scope <scope> --report - <<'CODE_ATLAS_REPORT'
+<exact Markdown report>
+CODE_ATLAS_REPORT
+```
+
+Record the scope actually analyzed: `worktree` for uncommitted changes (no `--base`/`--head`), `commit` (add `--head <commit>` unless it is HEAD), `range` (add `--base <base> --head <head>`), `project` for a repository-wide result, or `custom`. If `code-atlas` is not installed, return the report and say it was not saved.

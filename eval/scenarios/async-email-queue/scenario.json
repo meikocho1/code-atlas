@@ -1,0 +1,27 @@
+{
+  "skill": "understand-change",
+  "split": "val",
+  "summary": "Signup stops sending the welcome email synchronously and enqueues a job an EmailWorker consumes; committed with a body explaining slow signups from SMTP timeouts; the trap is claiming the email still goes out before the signup responds.",
+  "request": "Use the {skill} skill to explain the current change in BUSINESS / SYSTEM / CODE. Choose only a visual that helps. Answer in English.",
+  "base_message": "Baseline signup with synchronous welcome email",
+  "commit_message": "Stop blocking signup on the welcome email\n\nSignups were slow when SMTP timed out, so the welcome email is now queued and a worker sends it asynchronously.",
+  "expect": {
+    "scope": "commit",
+    "visual": {
+      "prefer": "sequence",
+      "allow": [
+        "flowchart"
+      ]
+    },
+    "facts": [
+      "EmailQueue",
+      "enqueue\\(",
+      "SMTP",
+      "EmailWorker"
+    ],
+    "forbidden": [
+      "email is (?:still|now) sent (?:synchronously|before)"
+    ],
+    "motivation": "sourced"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "skill": "understand-change",
+  "split": "test",
+  "summary": "Changes only the text of a log message in process(), from 'Processing order %s' to 'Started processing order %s'; left uncommitted. The right answer has no diagram and no user-facing claim.",
+  "request": "Use the {skill} skill to explain the current change in BUSINESS / SYSTEM / CODE. Choose only a visual that helps. Answer in English.",
+  "base_message": "Add order processing with logging",
+  "commit_message": null,
+  "expect": {
+    "scope": "worktree",
+    "visual": {
+      "prefer": "none",
+      "allow": []
+    },
+    "facts": [
+      "Started processing order",
+      "logger\\.info",
+      "service\\.py"
+    ],
+    "forbidden": [
+      "(?:users?|customers?) (?:will |can |now )*see"
+    ],
+    "motivation": "unknown"
+  }
+}

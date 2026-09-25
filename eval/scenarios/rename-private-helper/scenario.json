@@ -1,0 +1,15 @@
+{
+  "skill": "understand-change",
+  "split": "train",
+  "summary": "Renames the private helper _calc_total to _sum_line_items and updates its two call sites (order_total, invoice_total); identical behavior; left uncommitted. The right answer has no diagram.",
+  "request": "Use the {skill} skill to explain the current change in BUSINESS / SYSTEM / CODE. Choose only a visual that helps. Answer in English.",
+  "base_message": "Add order and invoice totals",
+  "commit_message": null,
+  "expect": {
+    "scope": "worktree",
+    "visual": {"prefer": "none", "allow": []},
+    "facts": ["_calc_total", "_sum_line_items", "(?:no|without|not chang\\w*)[^.]{0,40}behavio"],
+    "forbidden": [],
+    "motivation": "unknown"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "skill": "understand-change",
+  "split": "test",
+  "summary": "Adds an on_hold status to the support ticket lifecycle, reachable from open and back, while resolve() still requires open; left uncommitted with a new untracked test.",
+  "request": "Use the {skill} skill to explain the current change in BUSINESS / SYSTEM / CODE. Choose only a visual that helps. Answer in English.",
+  "base_message": "Baseline support ticket lifecycle",
+  "commit_message": null,
+  "expect": {
+    "scope": "worktree",
+    "visual": {
+      "prefer": "state",
+      "allow": [
+        "none"
+      ]
+    },
+    "facts": [
+      "on_hold",
+      "hold\\(",
+      "resume\\("
+    ],
+    "forbidden": [
+      "on.?hold (?:tickets? )?(?:can|may) (?:be )?(?:directly |now )?resolved",
+      "resolve\\(\\) (?:accepts|allows|works (?:on|for)) on.?hold"
+    ],
+    "motivation": "unknown"
+  }
+}

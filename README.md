@@ -1,6 +1,8 @@
-# Code Atlas
+<p align="center"><img src="assets/icon.svg" width="128" alt="Code Atlas"></p>
+<h1 align="center">Code Atlas</h1>
+<p align="center">コードと変更を、根拠付きで読み解く地図。</p>
 
-**コードを、人が検証できる地図にする。** Code Atlas は、既存プロジェクトや変更を根拠付きで説明する Agent Skills 集と、プロジェクト分類・解析履歴を一元管理するローカルCLIです。Claude Code と Codex の両方で使えます。
+Code Atlas は、既存プロジェクトや変更を根拠付きで説明する Agent Skills 集と、プロジェクト分類・解析履歴を一元管理するローカルCLIです。Skill は [Agent Skills](https://agentskills.io) 標準の形式なので、Claude Code、Codex、pi、OpenCode、Gemini CLI、Cursor で同じものを使えます。
 
 ## できること
 
@@ -29,6 +31,7 @@
 
 ```text
 code-atlas/
+├── assets/icon.svg
 ├── skills/
 │   ├── understand-project/
 │   ├── understand-change/
@@ -48,8 +51,11 @@ code-atlas/
 │   └── c4.md
 ├── code_atlas/                 # 分類・履歴CLI
 ├── bin/code-atlas              # 依存パッケージ不要の実行入口
-├── tests/                      # CLIの振る舞いテスト
-├── scripts/make-fixture.sh
+├── eval/                       # Skillの評価シナリオとハーネス
+├── tests/                      # CLIと評価ハーネスのテスト
+├── scripts/
+│   ├── make-fixture.sh
+│   └── check-skills.py         # Skill単体配布の検証
 └── examples/
     ├── fixture-walkthrough.md
     └── sample-explanation.md
@@ -57,37 +63,54 @@ code-atlas/
 
 `skills/<name>/` が単体の配布単位です。ルートの `references/` は設計ガイドであり、Skillが実行時に必要とする参照はSkillフォルダ内に収めています。
 
-## 使い方
-
-**個人利用ではSkillをグローバル管理**します。このリポジトリを開発元にし、CodexとClaude Codeの個人用Skillディレクトリから参照します。解析対象ごとにSkillを作り直す必要はありません。両ツールはSkillフォルダへのシンボリックリンクを読み込めます。
+## インストールと使い方
 
 ```bash
-# 一度だけ設定する。/path/to/code-atlas は実際の保存先に置き換える
+git clone https://github.com/meikocho1/code-atlas.git
+cd code-atlas
+ATLAS_DIR="$(pwd -P)"
+```
+
+**個人利用ではSkillをグローバル管理**します。このリポジトリを開発元にし、各エージェントの個人用Skillディレクトリからシンボリックリンクで参照します。解析対象ごとにSkillを作り直す必要はありません。
+
+多くのエージェントは共通の `~/.agents/skills/` を読むため、リンク先は2箇所で足ります。
+
+| エージェント | 読み込む個人用ディレクトリ | プロジェクト用 |
+| --- | --- | --- |
+| Claude Code | `~/.claude/skills/` | `.claude/skills/` |
+| Codex | `~/.agents/skills/` | `.agents/skills/` |
+| pi | `~/.agents/skills/`（ほかに `~/.pi/agent/skills/`） | `.agents/skills/` |
+| OpenCode | `~/.agents/skills/`（ほかに `~/.config/opencode/skills/`、`~/.claude/skills/`） | `.agents/skills/` |
+| Gemini CLI | `~/.agents/skills/`（ほかに `~/.gemini/skills/`） | `.agents/skills/` |
+| Cursor | `~/.agents/skills/`（ほかに `~/.cursor/skills/`、`~/.claude/skills/`） | `.agents/skills/` |
+
+```bash
+# クローンしたディレクトリで一度だけ設定する
 mkdir -p "$HOME/.agents/skills" "$HOME/.claude/skills"
-for skill in /path/to/code-atlas/skills/*; do
+for skill in "$ATLAS_DIR"/skills/*; do
   name=$(basename "$skill")
   ln -s "$skill" "$HOME/.agents/skills/$name"
-  ln -s "$skill" "$HOME/.claude/skills/$name"
+  ln -s "$skill" "$HOME/.claude/skills/$name"   # Claude Code を使わないなら不要
 done
 ```
 
-Codexの個人用配置先は `~/.agents/skills/`、Claude Codeは `~/.claude/skills/` です。Skillを更新すると、両ツールが同じ開発元を参照します。反映されない場合はセッションを再起動します。
+Skillを更新すると、すべてのエージェントが同じ開発元を参照します。反映されない場合はセッションを再起動します。`~/.pi/agent/skills/` などエージェント専用のディレクトリにも同名のリンクを作ると重複になります（pi は最初に見つけた方を使い、警告を出します）。OpenCode と Cursor は `~/.claude/skills/` も読むので、同じリンク先が2箇所から見えます。
 
 **チームで共有する場合**は、必要なSkillだけを対象リポジトリへコピーしてコミットします。この場合は各プロジェクトで使う版を固定できます。
 
 ```bash
-# Codex: 対象リポジトリのルートで
+# 対象リポジトリのルートで。.agents/skills は Codex・pi・OpenCode・Gemini CLI・Cursor が読む
 mkdir -p .agents/skills
-cp -R /path/to/code-atlas/skills/understand-change .agents/skills/
+cp -R "$ATLAS_DIR/skills/understand-change" .agents/skills/
 
-# Claude Code: 対象リポジトリのルートで
+# Claude Code も使う場合
 mkdir -p .claude/skills
-cp -R /path/to/code-atlas/skills/understand-change .claude/skills/
+cp -R "$ATLAS_DIR/skills/understand-change" .claude/skills/
 ```
 
 同名Skillを個人用とプロジェクト用の両方に置くと選択が紛らわしくなるため、同じ環境ではどちらを使うか決めてください。複数Skillを配布する場合はプラグイン化も可能です。
 
-対象リポジトリで「`understand-change` を使い、今の変更を BUSINESS / SYSTEM / CODE で説明して」と依頼します。Claude Code では `/understand-change` でも呼び出せます。Codex では `$understand-change` を明示できます。コミットやブランチを指定したいときは依頼文に含めます。
+対象リポジトリで「`understand-change` を使い、今の変更を BUSINESS / SYSTEM / CODE で説明して」と依頼します。Skill名を明示して呼ぶ方法はエージェントごとに違います。Claude Code は `/understand-change`、Codex は `$understand-change`、pi は `/skill:understand-change` です。OpenCode・Gemini CLI・Cursor では、依頼文でSkill名を挙げて頼みます。コミットやブランチを指定したいときは依頼文に含めます。
 
 ```text
 $understand-change 直近のコミットを説明して。必要なら図を選んでください。
@@ -104,7 +127,7 @@ CLIはPython標準ライブラリだけで動きます。開発元リポジト�
 
 ```bash
 mkdir -p "$HOME/.local/bin"
-ln -s /path/to/code-atlas/bin/code-atlas "$HOME/.local/bin/code-atlas"
+ln -s "$ATLAS_DIR/bin/code-atlas" "$HOME/.local/bin/code-atlas"
 ```
 
 ```bash
@@ -115,9 +138,12 @@ python3 -m code_atlas history add --repo /path/to/repository \
 python3 -m code_atlas history list --project /path/to/repository
 python3 -m code_atlas history show RUN_ID
 python3 -m code_atlas project relocate PROJECT_ID /new/repository/path
+python3 -m code_atlas check-refs --repo /path/to/repository --rev HEAD --report /path/to/report.md
 ```
 
-レポートの履歴保存は明示的に行います。Skillへ「この説明をCode Atlasの履歴に保存して」と依頼しても構いません。`CODE_ATLAS_DATA_DIR` でデータベースの保存先を変更できます。未コミット変更の履歴には差分本体を保存せず、その時点の内容のハッシュを記録します。そのため後からコードが変わると同じ状態を完全には再現できません。共有したいレポートは `history export` で書き出せます。
+`check-refs` はレポート中の `path:line` と `path:開始-終了` を抜き出し、ファイルが存在して行番号がその範囲内にあるかを確かめます。`--rev` を付けるとそのコミットのファイルに、付けなければ作業ツリーに照合し、問題があれば終了コード1を返します。確かめるのは参照先の実在だけで、書かれた内容の正しさは判定しません。各Skillは `code-atlas` が入っていれば、報告前にこれで参照を確認します。
+
+レポートの履歴保存は明示的に行います。Skillへ「この説明をCode Atlasの履歴に保存して」と依頼しても構いません。その場合Skillはレポートを `--report -`（標準入力）で渡し、対象リポジトリにファイルを作りません。変更のない作業ツリーを `--scope worktree` で記録しようとするとエラーになるので、コミット済みの内容は `--scope commit` で記録します。`--project` にはプロジェクトIDのほか、リポジトリ内の任意のディレクトリも指定できます。`CODE_ATLAS_DATA_DIR` でデータベースの保存先を変更できます。未コミット変更の履歴には差分本体を保存せず、その時点の内容のハッシュを記録します。そのため後からコードが変わると同じ状態を完全には再現できません。共有したいレポートは `history export` で書き出せます。
 
 ## 設計思想
 
@@ -127,22 +153,45 @@ python3 -m code_atlas project relocate PROJECT_ID /new/repository/path
 4. **根拠と不確実性を残す。** 重要な説明にファイル位置を添え、コードで確認できない実行結果は推測として扱います。
 5. **必要なコードだけ読む。** 先に差分の概要と変更シンボルを掴み、構造索引があれば関連する呼び出し経路を一度に取得します。Code Wiki は該当モジュールへの案内に使い、現在のコードで裏付けます。索引がない場合も検索範囲と読み取り範囲を段階的に広げます。
 
-この考え方は [diagramming](https://github.com/arjunprabhulal/agent-skills/blob/main/skills/docs/diagramming/SKILL.md) の「問いに合う図」、[architecture-diagram-generator](https://github.com/imtiazrayhan/agentscamp-library/blob/main/skills/architecture-diagram-generator/SKILL.md) の「実コードから関係を確かめる」、[CodeGraph](https://github.com/colbymchenry/codegraph/blob/main/site/src/content/docs/reference/mcp-server.md) のシンボル単位の探索、[code-wiki](https://github.com/NousResearch/hermes-agent/blob/main/optional-skills/software-development/code-wiki/SKILL.md) の読み取り範囲の制御を参考にしています。Code Atlas はこれらを複製せず、**コードに根拠のある説明**と **BUSINESS / SYSTEM / CODE** に絞っています。構造索引やWikiがなくても動きます。
+この考え方は [diagramming](https://github.com/arjunprabhulal/agent-skills/blob/main/skills/docs/diagramming/SKILL.md) の「問いに合う図」、[architecture-diagram-generator](https://github.com/imtiazrayhan/agentscamp-library/blob/main/skills/architecture-diagram-generator/SKILL.md) の「実コードから関係を確かめる」、[CodeGraph](https://github.com/colbymchenry/codegraph/blob/main/site/src/content/docs/reference/mcp-server.md) のシンボル単位の探索、[code-wiki](https://github.com/NousResearch/hermes-agent/blob/main/optional-skills/software-development/code-wiki/SKILL.md) の読み取り範囲の制御を参考にしています。`review-change` は [OpenCodeReview](https://github.com/alibaba/open-code-review) の「間違えてはいけない工程（対象ファイルの選定・ルールの割り当て）は決定的に処理し、判断はエージェントに任せる」設計に倣い、全ファイルのカバレッジ確認と、報告前に指摘位置を読み直す工程を持ちます。`ocr` CLI が入っていれば、対象ファイルの選定とルールの取得を `ocr delegate` に任せます。Code Atlas はこれらを複製せず、**コードに根拠のある説明**と **BUSINESS / SYSTEM / CODE** に絞っています。構造索引やWiki、`ocr` がなくても動きます。
 
 ## 試す・検証する
 
-追加の Python パッケージは不要です。次のスクリプトは一時的な Git リポジトリを作り、注文キャンセルの状態遷移を変更した差分を残します。
+追加の Python パッケージは不要です。次のスクリプトは一時的な Git リポジトリを作り、説明対象の変更を残します。第2引数でシナリオを選べます（一覧は `python3 eval/harness.py list`）。代表的な3つは次のとおりです。
+
+| シナリオ | 変更 | 確かめること |
+| --- | --- | --- |
+| `state`（既定） | 注文キャンセルの状態遷移（未コミット） | State Diagram の選択 |
+| `schema` | 返金テーブルの追加（コミット済み、理由はコミットメッセージ） | ERの多重度、直近コミットへのフォールバック、変更理由の出典明記 |
+| `tiny` | 送料無料の境界値修正（未コミット） | 図を描かない判断 |
 
 ```bash
-bash scripts/make-fixture.sh /tmp/code-atlas-demo
+bash scripts/make-fixture.sh /tmp/code-atlas-demo schema
 cd /tmp/code-atlas-demo
-git diff
+git status --short && git log --oneline
 # このリポジトリ内で Skill を使い、変更を説明する
 ```
 
-期待する観点と試用手順は [fixture walkthrough](examples/fixture-walkthrough.md)、出力例は [sample explanation](examples/sample-explanation.md) を参照してください。スクリプトは既存ディレクトリを上書きしません。
+期待する観点と試用手順は [fixture walkthrough](examples/fixture-walkthrough.md)、`state` の出力例は [sample explanation](examples/sample-explanation.md) を参照してください。スクリプトは既存ディレクトリを上書きしません。
 
 ```bash
+cd "$ATLAS_DIR"
 python3 scripts/check-skills.py
 python3 -m unittest discover -s tests -v
 ```
+
+### Skillの自動評価
+
+`eval/scenarios/` には25件のシナリオがあります（train 14 / val 5 / test 6）。各シナリオは、最初のコミット（`base/`）、その上に重ねる変更（`change/`）、依頼文と期待値（`scenario.json`）で構成されます。`eval/harness.py` は、シナリオのリポジトリを作り、Claude Code に Skill を使わせ、回答を機械的に採点します。
+
+```bash
+python3 eval/harness.py list --split val                           # シナリオ一覧（train / val / test）
+python3 eval/harness.py run tiny state --model sonnet              # 実行して採点（トークンを消費します）
+python3 eval/harness.py score tiny /path/to/built/repo report.md   # 手元の回答だけを採点
+```
+
+採点項目は、図の種類が期待どおりか、`path:line` が実在するか（`check-refs` と同じ判定）、必須の事実を含むか、誤った主張を含まないか、変更理由を出典付きで書くか「確定できない」と書くか、の5つです。`soft` はその平均、`hard` は全項目が満点のときだけ1です。実行時は個人設定（フックやプラグイン、個人用Skill）を読み込まず、Skill は重複しない名前で対象リポジトリに入れます。採点は英語の回答を前提にした正規表現なので、依頼文で英語の回答を指定しています。
+
+## ライセンス
+
+MIT。詳細は `LICENSE` を参照してください。

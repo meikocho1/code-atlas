@@ -1,0 +1,15 @@
+{
+  "skill": "understand-change",
+  "split": "val",
+  "summary": "Raises the signup password minimum from 8 to 12 and rewords the rejection message; committed with a body citing a security review.",
+  "request": "Use the {skill} skill to explain the current change in BUSINESS / SYSTEM / CODE. Choose only a visual that helps. Answer in English.",
+  "base_message": "Baseline signup password validation",
+  "commit_message": "Require longer signup passwords\n\nA security review recommended raising the minimum from 8 to 12 characters to reduce brute-force risk.",
+  "expect": {
+    "scope": "commit",
+    "visual": {"prefer": "none", "allow": []},
+    "facts": ["MIN_PASSWORD_LENGTH", "12", "security review"],
+    "forbidden": ["error message (?:is|remains|stays) (?:the same|unchanged)"],
+    "motivation": "sourced"
+  }
+}

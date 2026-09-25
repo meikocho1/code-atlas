@@ -1,0 +1,28 @@
+{
+  "skill": "understand-change",
+  "split": "train",
+  "summary": "Expense submission now requires manager approval when amount exceeds 100000, otherwise it auto-approves; uncommitted; the trap is assuming an expense of exactly 100000 needs approval when the check is strictly greater-than.",
+  "request": "Use the {skill} skill to explain the current change in BUSINESS / SYSTEM / CODE. Choose only a visual that helps. Answer in English.",
+  "base_message": "Baseline expense submission (always auto-approved)",
+  "commit_message": null,
+  "expect": {
+    "scope": "worktree",
+    "visual": {
+      "prefer": "flowchart",
+      "allow": [
+        "none"
+      ]
+    },
+    "facts": [
+      "APPROVAL_THRESHOLD",
+      "100,?000",
+      "awaiting_manager_approval",
+      "approve_expense"
+    ],
+    "forbidden": [
+      "(?:at least|>=)\\s*100,?000",
+      "100,?000 or (?:more|above|higher)"
+    ],
+    "motivation": "unknown"
+  }
+}

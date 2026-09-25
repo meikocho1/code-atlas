@@ -1,0 +1,15 @@
+{
+  "skill": "understand-change",
+  "split": "train",
+  "summary": "Bumps requests from 2.31.0 to 2.32.3 in requirements.txt, with the generated lockfile updated to match; committed with a subject only, so motivation is unknown despite the trap of a long lockfile diff.",
+  "request": "Use the {skill} skill to explain the current change in BUSINESS / SYSTEM / CODE. Choose only a visual that helps. Answer in English.",
+  "base_message": "Pin requests and click for the HTTP client",
+  "commit_message": "Bump requests to 2.32.3",
+  "expect": {
+    "scope": "commit",
+    "visual": {"prefer": "none", "allow": []},
+    "facts": ["2\\.31\\.0", "2\\.32\\.3", "requirements\\.txt"],
+    "forbidden": ["(?:fixes|patches|resolves) (?:a |the )?(?:security|CVE|vulnerability)"],
+    "motivation": "unknown"
+  }
+}

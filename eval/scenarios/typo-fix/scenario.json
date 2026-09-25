@@ -1,0 +1,15 @@
+{
+  "skill": "understand-change",
+  "split": "train",
+  "summary": "Fixes a spelling typo in the newsletter opt-in label, 'Recieve updates' to 'Receive updates'; left uncommitted. The right answer has no diagram.",
+  "request": "Use the {skill} skill to explain the current change in BUSINESS / SYSTEM / CODE. Choose only a visual that helps. Answer in English.",
+  "base_message": "Add newsletter signup labels",
+  "commit_message": null,
+  "expect": {
+    "scope": "worktree",
+    "visual": {"prefer": "none", "allow": []},
+    "facts": ["Recieve updates", "Receive updates", "messages\\.py"],
+    "forbidden": ["(?:causes|introduces|results in|triggers) (?:a |the )?(?:behaviou?r|logic) change"],
+    "motivation": "unknown"
+  }
+}

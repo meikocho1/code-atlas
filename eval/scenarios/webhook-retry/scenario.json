@@ -1,0 +1,15 @@
+{
+  "skill": "understand-change",
+  "split": "train",
+  "summary": "Payment webhook now notifies a downstream service after saving and retries up to 3 times on NotifierError; uncommitted; the trap is assuming the payment is not saved until the notification succeeds.",
+  "request": "Use the {skill} skill to explain the current change in BUSINESS / SYSTEM / CODE. Choose only a visual that helps. Answer in English.",
+  "base_message": "Baseline payment webhook handler",
+  "commit_message": null,
+  "expect": {
+    "scope": "worktree",
+    "visual": {"prefer": "sequence", "allow": ["flowchart"]},
+    "facts": ["NotifierError", "notify\\(", "\\bhandle_webhook\\b", "\\b3\\b"],
+    "forbidden": ["payment (?:is|was) not saved"],
+    "motivation": "unknown"
+  }
+}

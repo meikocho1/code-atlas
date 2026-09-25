@@ -1,0 +1,27 @@
+{
+  "skill": "understand-change",
+  "split": "train",
+  "summary": "Renames customers.email to customers.email_address via a migration and updates the one query that reads it; left uncommitted.",
+  "request": "Use the {skill} skill to explain the current change in BUSINESS / SYSTEM / CODE. Choose only a visual that helps. Answer in English.",
+  "base_message": "Baseline customers table",
+  "commit_message": null,
+  "expect": {
+    "scope": "worktree",
+    "visual": {
+      "prefer": "none",
+      "allow": [
+        "er"
+      ]
+    },
+    "facts": [
+      "email_address",
+      "RENAME COLUMN",
+      "find_by_email"
+    ],
+    "forbidden": [
+      "(?<!not )(?<!n't )(?:creates?|adds?) (?:a )?new table",
+      "(?<!not )(?<!n't )(?:keeps?|retains?) the (?:old )?email column"
+    ],
+    "motivation": "unknown"
+  }
+}

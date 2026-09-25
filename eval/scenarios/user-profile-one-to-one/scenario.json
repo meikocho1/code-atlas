@@ -1,0 +1,15 @@
+{
+  "skill": "understand-change",
+  "split": "train",
+  "summary": "Adds a profiles table with a UNIQUE user_id foreign key (one profile per user) and a get_profile() accessor; committed with a body giving the product reason.",
+  "request": "Use the {skill} skill to explain the current change in BUSINESS / SYSTEM / CODE. Choose only a visual that helps. Answer in English.",
+  "base_message": "Baseline users table",
+  "commit_message": "Add user profiles\n\nProduct wants editable display names separate from the login email, without changing the users table.",
+  "expect": {
+    "scope": "commit",
+    "visual": {"prefer": "er", "allow": ["none"]},
+    "facts": ["profiles", "UNIQUE", "user_id", "login"],
+    "forbidden": ["users\\s*\\|\\|--o\\{\\s*profiles", "profiles\\s*\\}o--\\|\\|\\s*users"],
+    "motivation": "sourced"
+  }
+}

@@ -56,6 +56,21 @@ def resolve_ref(repo: Repo, ref: str) -> str:
     return _git(repo.root, "rev-parse", "--verify", f"{ref}^{{commit}}").decode().strip()
 
 
+def read_file(repo: Repo, path: str, rev: str | None = None) -> bytes | None:
+    """Read a repository file from the working tree or a resolved commit; None if absent or outside."""
+    target = Path(os.path.normpath(repo.root / path))
+    if not target.is_relative_to(repo.root):
+        return None
+    if rev is None:
+        # Resolve symlinks too, so a link inside the repository cannot expose a file outside it.
+        real = target.resolve()
+        return real.read_bytes() if real.is_relative_to(repo.root) and real.is_file() else None
+    try:
+        return _git(repo.root, "cat-file", "blob", f"{rev}:{target.relative_to(repo.root).as_posix()}")
+    except GitError:
+        return None
+
+
 def worktree_fingerprint(repo: Repo) -> str | None:
     """Hash tracked changes and untracked file contents without storing their code."""
     status = _git(repo.root, "status", "--porcelain=v1", "-z", "--untracked-files=all")

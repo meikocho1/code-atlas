@@ -1,0 +1,15 @@
+{
+  "skill": "understand-change",
+  "split": "train",
+  "summary": "The duplicated HTTP GET call in orders_view and invoices_view moves into a new api_client module both now import; behaviour is unchanged; uncommitted with api_client.py untracked.",
+  "request": "Use the {skill} skill to explain the current change in BUSINESS / SYSTEM / CODE. Choose only a visual that helps. Answer in English.",
+  "base_message": "Baseline order and invoice views with duplicated HTTP calls",
+  "commit_message": null,
+  "expect": {
+    "scope": "worktree",
+    "visual": {"prefer": "flowchart", "allow": ["none"]},
+    "facts": ["api_client", "orders_view", "invoices_view", "get_json"],
+    "forbidden": [],
+    "motivation": "unknown"
+  }
+}

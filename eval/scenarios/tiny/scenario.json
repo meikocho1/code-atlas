@@ -1,0 +1,15 @@
+{
+  "skill": "understand-change",
+  "split": "train",
+  "summary": "Changes > to >= in the free-shipping check; left uncommitted. The right answer has no diagram.",
+  "request": "Use the {skill} skill to explain the current change in BUSINESS / SYSTEM / CODE. Choose only a visual that helps. Answer in English.",
+  "base_message": "Add shipping fee",
+  "commit_message": null,
+  "expect": {
+    "scope": "worktree",
+    "visual": {"prefer": "none", "allow": []},
+    "facts": [">=", "5,?000"],
+    "forbidden": [],
+    "motivation": "unknown"
+  }
+}

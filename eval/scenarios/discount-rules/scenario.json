@@ -1,0 +1,27 @@
+{
+  "skill": "understand-change",
+  "split": "test",
+  "summary": "Pricing adds a 10% member discount that stacks with a coupon percent, capped at a combined 30%; committed with a subject-only message; the trap is assuming discounts stack without limit.",
+  "request": "Use the {skill} skill to explain the current change in BUSINESS / SYSTEM / CODE. Choose only a visual that helps. Answer in English.",
+  "base_message": "Baseline coupon pricing",
+  "commit_message": "Stack member discount with coupons, capped at 30%",
+  "expect": {
+    "scope": "commit",
+    "visual": {
+      "prefer": "none",
+      "allow": [
+        "flowchart"
+      ]
+    },
+    "facts": [
+      "MEMBER_DISCOUNT_PERCENT",
+      "MAX_DISCOUNT_PERCENT",
+      "coupon_percent",
+      "is_member"
+    ],
+    "forbidden": [
+      "discounts? (?:now )?stack without (?:a |any )?cap"
+    ],
+    "motivation": "unknown"
+  }
+}

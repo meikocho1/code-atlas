@@ -1,0 +1,15 @@
+{
+  "skill": "understand-change",
+  "split": "train",
+  "summary": "list_items() adds page and page_size parameters, defaulting page_size to 50 and capping it at 200; uncommitted; the trap is assuming page is zero-indexed.",
+  "request": "Use the {skill} skill to explain the current change in BUSINESS / SYSTEM / CODE. Choose only a visual that helps. Answer in English.",
+  "base_message": "Baseline list_items endpoint (no pagination)",
+  "commit_message": null,
+  "expect": {
+    "scope": "worktree",
+    "visual": {"prefer": "none", "allow": ["sequence"]},
+    "facts": ["DEFAULT_PAGE_SIZE", "\\b50\\b", "MAX_PAGE_SIZE", "\\b200\\b"],
+    "forbidden": ["page (?:starts|begins|is indexed) (?:at|from) 0", "zero-indexed page"],
+    "motivation": "unknown"
+  }
+}

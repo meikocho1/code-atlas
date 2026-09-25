@@ -1,0 +1,15 @@
+{
+  "skill": "understand-change",
+  "split": "train",
+  "summary": "Adds a reserved state between available and sold to a stock item, with release() reverting a reservation to available; left uncommitted with a new untracked test.",
+  "request": "Use the {skill} skill to explain the current change in BUSINESS / SYSTEM / CODE. Choose only a visual that helps. Answer in English.",
+  "base_message": "Baseline stock item lifecycle",
+  "commit_message": null,
+  "expect": {
+    "scope": "worktree",
+    "visual": {"prefer": "state", "allow": ["none"]},
+    "facts": ["reserve\\(", "release\\(", "reserved"],
+    "forbidden": ["available.{0,15}(?:can|may) be sold directly", "sold item.{0,20}(?:can be|is)\\s+released"],
+    "motivation": "unknown"
+  }
+}

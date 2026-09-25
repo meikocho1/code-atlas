@@ -1,0 +1,15 @@
+{
+  "skill": "understand-change",
+  "split": "val",
+  "summary": "Adds a paused state (active <-> paused, paused -> cancelled) to the subscription lifecycle; committed with a body explaining customers asked to pause instead of cancelling.",
+  "request": "Use the {skill} skill to explain the current change in BUSINESS / SYSTEM / CODE. Choose only a visual that helps. Answer in English.",
+  "base_message": "Baseline subscription lifecycle",
+  "commit_message": "Let customers pause instead of cancelling\n\nCustomers asked for a way to pause billing rather than cancelling outright when they want a break; pausing keeps the subscription so resuming is instant.",
+  "expect": {
+    "scope": "commit",
+    "visual": {"prefer": "state", "allow": ["none"]},
+    "facts": ["pause\\(", "resume\\(", "cancelled", "customers"],
+    "forbidden": ["cancelled.{0,20}(?:can be|is)\\s+resumed", "must be paused before.{0,20}cancel"],
+    "motivation": "sourced"
+  }
+}

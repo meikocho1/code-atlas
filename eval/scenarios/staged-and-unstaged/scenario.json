@@ -1,0 +1,16 @@
+{
+  "skill": "understand-change",
+  "split": "train",
+  "summary": "Adds a retry_limit config key (staged) and client.py's fetch() reading it to retry requests (unstaged); reading only one half of the change misses the feature.",
+  "request": "Use the {skill} skill to explain the current change in BUSINESS / SYSTEM / CODE. Choose only a visual that helps. Answer in English.",
+  "base_message": "Add HTTP client with a single fixed attempt",
+  "commit_message": null,
+  "stage": ["config.py"],
+  "expect": {
+    "scope": "worktree",
+    "visual": {"prefer": "none", "allow": ["flowchart"]},
+    "facts": ["retry_limit", "config\\.py", "client\\.py"],
+    "forbidden": [],
+    "motivation": "unknown"
+  }
+}

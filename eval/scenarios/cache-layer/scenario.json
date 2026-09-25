@@ -1,0 +1,15 @@
+{
+  "skill": "understand-change",
+  "split": "test",
+  "summary": "Product lookup adds an in-memory TTL cache in front of ProductRepository: a hit returns the cached value, a miss loads from the repository and stores it; uncommitted; the trap is assuming the cache survives beyond the process.",
+  "request": "Use the {skill} skill to explain the current change in BUSINESS / SYSTEM / CODE. Choose only a visual that helps. Answer in English.",
+  "base_message": "Baseline product lookup",
+  "commit_message": null,
+  "expect": {
+    "scope": "worktree",
+    "visual": {"prefer": "sequence", "allow": ["flowchart"]},
+    "facts": ["TTLCache", "cache\\.get\\(", "cache\\.set\\(", "CACHE_TTL_SECONDS"],
+    "forbidden": ["cache (?:persists|survives) (?:a |the )?restart"],
+    "motivation": "unknown"
+  }
+}

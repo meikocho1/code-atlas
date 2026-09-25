@@ -1,0 +1,15 @@
+{
+  "skill": "understand-change",
+  "split": "test",
+  "summary": "Adds an order_items table (order_id required, no UNIQUE) so one order can have many items, plus total_for_order(); committed with a subject-only message so motivation is unknown.",
+  "request": "Use the {skill} skill to explain the current change in BUSINESS / SYSTEM / CODE. Choose only a visual that helps. Answer in English.",
+  "base_message": "Baseline orders table",
+  "commit_message": "Add order line items",
+  "expect": {
+    "scope": "commit",
+    "visual": {"prefer": "er", "allow": ["none"]},
+    "facts": ["order_items", "order_id", "total_for_order\\(", "quantity"],
+    "forbidden": ["orders\\s*\\|\\|--o\\|\\s*order_items", "order_items\\s*\\|o--\\|\\|\\s*orders"],
+    "motivation": "unknown"
+  }
+}

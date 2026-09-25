@@ -1,7 +1,8 @@
 # Code Atlas development
 
-- Maintain each `skills/<name>/` as a self-contained Agent Skill for Codex and Claude Code. Keep local references inside that skill folder; root `references/` is an authoring guide.
+- Maintain each `skills/<name>/` as a self-contained [Agent Skills](https://agentskills.io) skill that works unchanged in Claude Code, Codex, pi, OpenCode, Gemini CLI, and Cursor. Do not rely on host-specific frontmatter or tools without a fallback. Keep local references inside that skill folder; root `references/` is an authoring guide.
 - Keep skill prompts evidence-based and scoped. Use diagrams only when they answer a real question. Preserve the BUSINESS / SYSTEM / CODE lenses where relevant, and mark unsupported business effects explicitly.
 - The global catalog and immutable analysis history live in `code_atlas/`. Keep runtime dependencies in the Python standard library and never write into an analyzed repository merely to inspect it.
-- Validate changes with `python3 scripts/check-skills.py` and `python3 -m unittest discover -s tests -v`. If the fixture generator changes, check `examples/sample-explanation.md` line references and run its generated tests.
+- Every `SKILL.md` ends with the same two paragraphs, `code-atlas check-refs` before delivering and `code-atlas history add` on request (only `--skill` differs), because each skill ships alone. When those CLI arguments change, update all six; `scripts/check-skills.py` fails if the paragraphs drift. Adding or renaming a skill also means updating `EXPECTED` in `scripts/check-skills.py`.
+- Validate changes with `python3 scripts/check-skills.py` and `python3 -m unittest discover -s tests -v`. Evaluation scenarios live in `eval/scenarios/<id>/` (`base/`, full-file `change/`, `scenario.json`); `eval/harness.py` builds, scores, and runs them. A new scenario needs a reference answer that scores `"hard": 1.0`. If `eval/scenarios/state/` changes, fix the line references in `examples/sample-explanation.md`. Keep the `test` split out of any skill optimization.
 - Follow the user's language in output; the skills and internal references are written in English, the README in Japanese.

@@ -1,0 +1,15 @@
+{
+  "skill": "understand-change",
+  "split": "val",
+  "summary": "Raises the default request timeout from 30 to 60 seconds; committed with a subject only, so the motivation is unknown even though a commit exists.",
+  "request": "Use the {skill} skill to explain the current change in BUSINESS / SYSTEM / CODE. Choose only a visual that helps. Answer in English.",
+  "base_message": "Add default request timeout",
+  "commit_message": "Increase request timeout",
+  "expect": {
+    "scope": "commit",
+    "visual": {"prefer": "none", "allow": []},
+    "facts": ["DEFAULT_TIMEOUT_SECONDS", "30", "60"],
+    "forbidden": [],
+    "motivation": "unknown"
+  }
+}
