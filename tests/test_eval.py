@@ -54,6 +54,14 @@ class EvalHarnessTests(unittest.TestCase):
         one_to_many = harness.score("schema", schema, "```mermaid\nerDiagram\n  orders ||--o{ refunds : has\n```")
         self.assertEqual((one_to_many["checks"]["visual"], one_to_many["checks"]["forbidden"]), (1.0, 0.0))
 
+    def test_score_counts_a_diagram_rendered_to_html(self):
+        schema = self.root / "schema"
+        harness.build("schema", schema)
+        diagram = "erDiagram\n  orders ||--o{ refunds : has\n"
+        rendered = f'<div class="atlas-diagram"><pre class="mermaid" tabindex="0">{diagram}</pre></div>'
+        self.assertEqual(harness.visuals(rendered), ["er"])
+        self.assertEqual(harness.visuals(f"```mermaid\n{diagram}```"), ["er"])
+
 
 if __name__ == "__main__":
     unittest.main()

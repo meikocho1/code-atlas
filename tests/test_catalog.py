@@ -48,6 +48,30 @@ class CatalogTests(unittest.TestCase):
         self.assertNotEqual(first, second)
         untracked.write_text("NEXT = 2\n")
         self.assertNotEqual(second, worktree_fingerprint(repo))
+        (self.repo / "main.py").unlink()
+        self.assertNotEqual(worktree_fingerprint(repo), first)
+
+    def test_fingerprint_ignores_user_diff_settings(self):
+        repo = inspect_repo(self.repo)
+        (self.repo / "main.py").write_text("VALUE = 2\n")
+        (self.repo / "new.py").write_text("NEXT = 1\n")
+        git(self.repo, "add", "new.py")
+        before = worktree_fingerprint(repo)
+        for key, value in (("diff.noprefix", "true"), ("diff.algorithm", "patience"), ("diff.external", "false")):
+            git(self.repo, "config", key, value)
+        self.assertEqual(worktree_fingerprint(repo), before)
+        git(self.repo, "reset", "-q", "new.py")  # Staging does not change the files on disk.
+        self.assertEqual(worktree_fingerprint(repo), before)
+
+    def test_fingerprint_does_not_run_the_repository_fsmonitor(self):
+        marker = self.root / "fsmonitor-ran"
+        hook = self.root / "fsmonitor.sh"
+        hook.write_text(f"#!/bin/sh\ntouch '{marker}'\n")
+        hook.chmod(0o755)
+        git(self.repo, "config", "core.fsmonitor", str(hook))
+        (self.repo / "main.py").write_text("VALUE = 2\n")
+        self.assertIsNotNone(worktree_fingerprint(inspect_repo(self.repo)))
+        self.assertFalse(marker.exists())
 
     def test_worktree_uses_same_project(self):
         branch = self.root / "other-worktree"

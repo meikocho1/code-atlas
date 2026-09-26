@@ -14,8 +14,9 @@ class GitError(ValueError):
 
 
 def _git(path: Path, *args: str, check: bool = True) -> bytes:
+    # core.fsmonitor names a command in the analyzed repository's config; never let `git status` run it.
     result = subprocess.run(
-        ["git", "-C", str(path), *args],
+        ["git", "-c", "core.fsmonitor=false", "-C", str(path), *args],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         check=False,
@@ -72,19 +73,23 @@ def read_file(repo: Repo, path: str, rev: str | None = None) -> bytes | None:
 
 
 def worktree_fingerprint(repo: Repo) -> str | None:
-    """Hash tracked changes and untracked file contents without storing their code."""
+    """Hash the changed and untracked files' current contents without storing their code.
+
+    Contents are read from disk rather than from `git diff`, whose output follows user settings
+    such as diff.noprefix, diff.algorithm, and diff.renames, so one state always gets one hash.
+    """
     status = _git(repo.root, "status", "--porcelain=v1", "-z", "--untracked-files=all")
     if not status:
         return None
-    digest = hashlib.sha256()
-    digest.update(b"code-atlas-worktree-v1\0")
     if repo.head:
-        digest.update(_git(repo.root, "diff", "--binary", "HEAD", "--"))
+        changed = _git(repo.root, "diff", "--name-only", "--no-renames", "-z", "HEAD", "--")
     else:
-        digest.update(_git(repo.root, "diff", "--binary", "--cached", "--"))
-        digest.update(_git(repo.root, "diff", "--binary", "--"))
-    names = _git(repo.root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0")
-    for raw_name in sorted(name for name in names if name):
+        changed = _git(repo.root, "ls-files", "--cached", "-z")
+    changed += b"\0" + _git(repo.root, "ls-files", "--others", "--exclude-standard", "-z")
+    digest = hashlib.sha256()
+    digest.update(b"code-atlas-worktree-v2\0")
+    digest.update((repo.head or "").encode())
+    for raw_name in sorted({name for name in changed.split(b"\0") if name}):
         digest.update(b"\0path\0")
         digest.update(raw_name)
         file_path = repo.root / os.fsdecode(raw_name)
@@ -92,8 +97,10 @@ def worktree_fingerprint(repo: Repo) -> str | None:
             digest.update(b"\0symlink\0")
             digest.update(os.fsencode(os.readlink(file_path)))
         elif file_path.is_file():
-            digest.update(b"\0file\0")
+            digest.update(b"\0executable\0" if os.access(file_path, os.X_OK) else b"\0file\0")
             with file_path.open("rb") as stream:
                 for block in iter(lambda: stream.read(1024 * 1024), b""):
                     digest.update(block)
+        else:
+            digest.update(b"\0missing\0")
     return digest.hexdigest()

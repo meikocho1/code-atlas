@@ -29,6 +29,8 @@ DIAGRAMS = {
     "stateDiagram": "state", "erDiagram": "er", "sequenceDiagram": "sequence",
     "flowchart": "flowchart", "graph": "flowchart", "classDiagram": "class",
 }
+# Skills deliver HTML files by default; the run has no Write or render access and scores Markdown, so ask for it.
+OUTPUT_INSTRUCTION = " Return the complete report as Markdown in your reply; do not create files or HTML."
 # ponytail: English phrase lists only; scenario requests ask for English so scoring stays regex-based.
 MOTIVATION = {
     "sourced": r"commit message|PR description|pull request",
@@ -82,8 +84,11 @@ def build(scenario_id: str, dest: Path) -> dict:
 
 
 def visuals(report: str) -> list[str]:
+    """Name each Mermaid diagram, whether left as a Markdown fence or rendered by `code-atlas render`."""
     kinds = []
-    for block in re.findall(r"```mermaid[^\n]*\n(.*?)```", report, re.DOTALL):
+    blocks = re.findall(r"```mermaid[^\n]*\n(.*?)```", report, re.DOTALL)
+    blocks += re.findall(r'<pre class="mermaid"[^>]*>(.*?)</pre>', report, re.DOTALL)
+    for block in blocks:
         words = block.split()
         first = words[0] if words else ""
         kinds.append(next((kind for prefix, kind in DIAGRAMS.items() if first.startswith(prefix)), "other"))
@@ -144,7 +149,7 @@ def run(scenario_id: str, model: str) -> dict:
     build(scenario_id, repo)
     name = install_skill(spec["skill"], repo)
     command = [
-        "claude", "-p", spec["request"].format(skill=name), "--output-format", "json", "--model", model,
+        "claude", "-p", spec["request"].format(skill=name) + OUTPUT_INSTRUCTION, "--output-format", "json", "--model", model,
         "--setting-sources", "project,local",  # Skip personal hooks, plugins, and skills.
         "--allowedTools", "Read", "Grep", "Glob", "Bash(git:*)",
     ]
