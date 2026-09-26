@@ -9,6 +9,8 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 SKILLS = ROOT / "skills"
 SHARED_TAIL = "Before delivering, if the `code-atlas` CLI is installed"
+# Linked from the shared tail, so every skill carries an identical copy.
+SHARED_REFERENCE = "references/report-components.md"
 EXPECTED = {
     "understand-project", "understand-change", "visualize-architecture",
     "visualize-data-flow", "review-change", "explain-business",
@@ -18,6 +20,7 @@ EXPECTED = {
 def main() -> int:
     errors = []
     tails = {}
+    references = {}
     found = {path.parent.name for path in SKILLS.glob("*/SKILL.md")}
     if found != EXPECTED:
         errors.append(f"Expected {sorted(EXPECTED)}, found {sorted(found)}")
@@ -51,6 +54,9 @@ def main() -> int:
         else:
             tail = content[content.index(SHARED_TAIL):]
             tails[skill_file.parent.name] = tail.replace(f"--skill {skill_file.parent.name} ", "--skill <name> ")
+        shared = skill_file.parent / SHARED_REFERENCE
+        if shared.is_file():
+            references[skill_file.parent.name] = shared.read_text(encoding="utf-8")
         for link in re.findall(r"\[[^]]+\]\(([^)]+)\)", content):
             if "://" in link or link.startswith("#"):
                 continue
@@ -59,6 +65,8 @@ def main() -> int:
                 errors.append(f"{skill_file}: nonportable reference {link}")
     if len(set(tails.values())) > 1:
         errors.append(f"Shared check-refs/history paragraphs differ between skills: {sorted(tails)}")
+    if len(set(references.values())) > 1:
+        errors.append(f"{SHARED_REFERENCE} differs between skills: {sorted(references)}")
     if errors:
         print("\n".join(errors), file=sys.stderr)
         return 1
