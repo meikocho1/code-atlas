@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 from code_atlas.git import inspect_repo, worktree_fingerprint
-from code_atlas.refs import check_refs, find_refs
+from code_atlas.refs import check_refs, find_refs, permalink, permalink_base
 from code_atlas.store import Store
 
 
@@ -48,6 +48,44 @@ class CatalogTests(unittest.TestCase):
         self.assertNotEqual(first, second)
         untracked.write_text("NEXT = 2\n")
         self.assertNotEqual(second, worktree_fingerprint(repo))
+        (self.repo / "main.py").unlink()
+        self.assertNotEqual(worktree_fingerprint(repo), first)
+
+    def test_fingerprint_ignores_user_diff_settings(self):
+        repo = inspect_repo(self.repo)
+        (self.repo / "main.py").write_text("VALUE = 2\n")
+        (self.repo / "new.py").write_text("NEXT = 1\n")
+        git(self.repo, "add", "new.py")
+        before = worktree_fingerprint(repo)
+        for key, value in (("diff.noprefix", "true"), ("diff.algorithm", "patience"), ("diff.external", "false")):
+            git(self.repo, "config", key, value)
+        self.assertEqual(worktree_fingerprint(repo), before)
+        git(self.repo, "reset", "-q", "new.py")  # Staging does not change the files on disk.
+        self.assertEqual(worktree_fingerprint(repo), before)
+
+    def test_fingerprint_does_not_run_the_repository_fsmonitor(self):
+        marker = self.root / "fsmonitor-ran"
+        hook = self.root / "fsmonitor.sh"
+        hook.write_text(f"#!/bin/sh\ntouch '{marker}'\n")
+        hook.chmod(0o755)
+        git(self.repo, "config", "core.fsmonitor", str(hook))
+        (self.repo / "main.py").write_text("VALUE = 2\n")
+        self.assertIsNotNone(worktree_fingerprint(inspect_repo(self.repo)))
+        self.assertFalse(marker.exists())
+
+    def test_permalink_base_keeps_only_host_and_repository(self):
+        sha = "b" * 40
+        github = f"https://github.com/owner/repo/blob/{sha}/"
+        for remote in ("git@github.com:owner/repo.git", "https://user:token@github.com/owner/repo.git",
+                       "ssh://git@github.com:22/owner/repo"):
+            self.assertEqual(permalink_base(remote, sha), github)
+        self.assertEqual(permalink_base("https://gitlab.com/group/sub/repo.git", sha),
+                         f"https://gitlab.com/group/sub/repo/-/blob/{sha}/")
+        for remote in ("https://example.com/owner/repo", "file:///srv/repo.git", "https://github.com/owner", None):
+            self.assertIsNone(permalink_base(remote, sha))
+        self.assertIsNone(permalink_base("git@github.com:owner/repo.git", "HEAD"))
+        self.assertEqual(permalink(github, "./src/a b.py", 3, 5), f"{github}src/a%20b.py#L3-L5")
+        self.assertIsNone(permalink(github, "../outside.py", 1, 1))
 
     def test_worktree_uses_same_project(self):
         branch = self.root / "other-worktree"
@@ -86,6 +124,45 @@ class CatalogTests(unittest.TestCase):
             self.assertEqual(relocated["id"], project["id"])
             self.assertEqual(store.get_run(run["id"])["project_id"], project["id"])
             self.assertEqual(store.paths(project["id"]), [str(moved.resolve())])
+
+    def cli(self, *args):
+        env = dict(os.environ, CODE_ATLAS_DATA_DIR=str(self.data), PYTHONPATH=str(PROJECT_ROOT))
+        process = subprocess.run(
+            [sys.executable, "-m", "code_atlas", "--json", *args],
+            cwd=self.root, env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        )
+        self.assertEqual(process.returncode, 0, process.stderr)
+        return json.loads(process.stdout)
+
+    def test_exports_link_references_only_to_pushed_commits(self):
+        report = self.root / "report.md"
+        report.write_text("# Review\n\nSee `main.py:1`.\n")
+        head = inspect_repo(self.repo).head
+        base = f"https://github.com/owner/repo/blob/{head}/"
+        git(self.repo, "remote", "add", "origin", "https://token@github.com/owner/repo.git")
+
+        unpushed = self.cli("render", "--report", str(report), str(self.root / "unpushed.html"),
+                            "--repo", str(self.repo), "--rev", "HEAD")
+        self.assertIsNone(unpushed["links"])
+        git(self.repo, "update-ref", "refs/remotes/origin/main", "HEAD")
+        pushed = self.cli("render", "--report", str(report), str(self.root / "pushed.html"),
+                          "--repo", str(self.repo), "--rev", "HEAD")
+        self.assertEqual(pushed["links"], base)
+        html_text = (self.root / "pushed.html").read_text(encoding="utf-8")
+        self.assertIn(f'href="{base}main.py#L1"', html_text)
+        self.assertNotIn("token", html_text)
+        working_tree = self.cli("render", "--report", str(report), str(self.root / "worktree.html"))
+        self.assertIsNone(working_tree["links"])
+
+        commit_run = self.cli("history", "add", "--repo", str(self.repo), "--skill", "review-change",
+                              "--scope", "commit", "--report", str(report))
+        exported = self.cli("history", "export", commit_run["id"], str(self.root / "commit.html"))
+        self.assertEqual(exported["links"], base)
+        (self.repo / "main.py").write_text("VALUE = 2\n")
+        worktree_run = self.cli("history", "add", "--repo", str(self.repo), "--skill", "review-change",
+                                "--scope", "worktree", "--report", str(report))
+        exported = self.cli("history", "export", worktree_run["id"], str(self.root / "worktree-run.html"))
+        self.assertIsNone(exported["links"])
 
     def test_cli_register_record_filter_and_export(self):
         report = self.root / "report.md"

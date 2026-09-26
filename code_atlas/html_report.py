@@ -8,6 +8,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from . import components
+from .refs import permalink
 
 
 _HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$")
@@ -258,8 +259,28 @@ def _cell(value: str) -> str:
     return _inline(value)
 
 
-def render_html(markdown: str, destination: Path) -> Path:
-    """Create a standalone HTML report without overwriting an existing file."""
+_REF_CHIP = re.compile(r'<code class="atlas-ref">([^<]*):(\d+)(?:[-–](\d+))?</code>')
+
+
+def _link_refs(content: str, base: str) -> str:
+    """Turn `path:line` chips into permalinks, leaving chips that already sit inside a link."""
+    parts = re.split(r"(<a [^>]*>.*?</a>)", content, flags=re.DOTALL)
+    for index in range(0, len(parts), 2):
+        def link(match: re.Match) -> str:
+            start = int(match.group(2))
+            url = permalink(base, html.unescape(match.group(1)), start, int(match.group(3) or start))
+            if url is None:
+                return match.group(0)
+            return f'<a class="atlas-ref-link" href="{html.escape(url, quote=True)}" rel="noopener noreferrer">{match.group(0)}</a>'
+        parts[index] = _REF_CHIP.sub(link, parts[index])
+    return "".join(parts)
+
+
+def render_html(markdown: str, destination: Path, link_base: str | None = None) -> Path:
+    """Create a standalone HTML report without overwriting an existing file.
+
+    With link_base (see refs.permalink_base), `path:line` references link to that commit.
+    """
     if not markdown.strip():
         raise ValueError("Report is empty")
     destination = destination.expanduser()
@@ -267,6 +288,8 @@ def render_html(markdown: str, destination: Path) -> Path:
         raise ValueError("HTML destination must end in .html")
     language = "ja" if re.search(r"[\u3040-\u30ff\u3400-\u9fff]", markdown) else "en"
     title, content, toc, has_diagram = _content(markdown, language)
+    if link_base:
+        content = _link_refs(content, link_base)
     style = Path(__file__).with_name("report.css").read_text(encoding="utf-8")
     contents_label = "目次" if language == "ja" else "Contents"
     nav = f'<nav aria-label="{contents_label}"><span class="atlas-nav-label">CONTENTS</span>{toc}</nav>' if toc else ""

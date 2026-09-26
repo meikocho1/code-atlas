@@ -242,6 +242,9 @@ code.atlas-ref {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+a.atlas-ref-link { text-decoration: none; }
+a.atlas-ref-link code.atlas-ref { color: var(--accent); border-color: var(--line-strong); }
+a.atlas-ref-link:hover code.atlas-ref { background: var(--accent-soft); }
 tbody tr:hover td { background: var(--accent-soft); }
 
 /* ---------- Callouts: icon + label, never color alone ---------- */

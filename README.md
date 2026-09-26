@@ -157,11 +157,12 @@ python3 -m code_atlas check-refs --repo /path/to/repository --rev HEAD --report 
 
 ```bash
 python3 -m code_atlas render --report /path/to/report.md /path/to/report.html
+python3 -m code_atlas render --report /path/to/report.md /path/to/report.html --repo . --rev HEAD  # path:line をコミットへリンク
 python3 -m code_atlas history export RUN_ID /path/to/saved-report.html
 python3 -m code_atlas history export RUN_ID /path/to/saved-report.md --format md
 ```
 
-出力はCSSを含む1つのHTMLファイルです。Mermaid図だけは表示時に外部のMermaidライブラリを読み込むため、図の描画にはインターネット接続が必要です。オフラインでも本文と図の元テキストは読めます。見出し、段落、箇条書き、表、引用、コードブロック、リンクと下記のコンポーネントというCode Atlasのレポート書式を対象にしており、複雑なMarkdownの完全再現は目的としていません。HTML内ではレポートに含まれる生のHTMLを文字として表示します。レポート内の `path:line` は根拠として表示しますが、Whiteboardのようなコードへのジャンプ機能はありません。既存ファイルへの上書きはしません。見た目は [`report.css`](code_atlas/report.css) で調整できます。
+出力はCSSを含む1つのHTMLファイルです。Mermaid図だけは表示時に外部のMermaidライブラリを読み込むため、図の描画にはインターネット接続が必要です。オフラインでも本文と図の元テキストは読めます。見出し、段落、箇条書き、表、引用、コードブロック、リンクと下記のコンポーネントというCode Atlasのレポート書式を対象にしており、複雑なMarkdownの完全再現は目的としていません。HTML内ではレポートに含まれる生のHTMLを文字として表示します。レポート内の `path:line` は根拠として表示します。`render` に `--repo` と `--rev` を付けると、GitHub・GitLab 上のそのコミットの該当行（`…/blob/<sha>/order.py#L21-L27`）へリンクします。`history export` は、commit・range・project として記録したレポートについて、記録時のリモートとコミットで同じリンクを作ります。未コミットの変更（worktree）は行番号がコミットと一致しないためリンクしません。そのコミットがリモート追跡ブランチに含まれていない（まだ push していない）場合も、リンク切れになるためリンクしません。リモート URL に含まれる認証情報は出力しません。既存ファイルへの上書きはしません。見た目は [`report.css`](code_atlas/report.css) で調整できます。
 
 ### レポートのコンポーネント
 

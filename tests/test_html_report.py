@@ -194,6 +194,21 @@ Only: one column
         self.assertNotIn("<b>x</b>", output)
         self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt;", output)
 
+    def test_links_references_to_a_commit_when_given_a_base(self):
+        report = ("# Title\n\nSee `app/order.py:21-27`, `README.md:4`, `../secret.py:1`, "
+                  "and [the `order.py:3` note](https://example.com).\n")
+        base = "https://github.com/o/r/blob/" + "a" * 40 + "/"
+        with tempfile.TemporaryDirectory() as folder:
+            linked, plain = Path(folder) / "linked.html", Path(folder) / "plain.html"
+            render_html(report, linked, base)
+            render_html(report, plain)
+            output = linked.read_text(encoding="utf-8")
+            self.assertNotIn("atlas-ref-link\"", plain.read_text(encoding="utf-8"))
+        self.assertIn(f'<a class="atlas-ref-link" href="{base}app/order.py#L21-L27"', output)
+        self.assertIn(f'href="{base}README.md#L4"', output)
+        self.assertNotIn("secret.py#", output)
+        self.assertNotIn("order.py#L3", output)  # Already inside a link; anchors cannot nest.
+
 
 if __name__ == "__main__":
     unittest.main()

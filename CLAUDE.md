@@ -14,6 +14,7 @@ python3 scripts/check-skills.py                          # Skill の frontmatter
 python3 -m unittest discover -s tests -v                 # CLI のテスト
 python3 -m unittest discover -s tests -k relocation -v   # テスト名の一部で絞り込む
 python3 -m code_atlas --help                             # bin/code-atlas も同じ入口
+# CI（.github/workflows/test.yml）は上の2つを Python 3.9 / 3.13、Ubuntu / macOS で実行する
 
 # 評価シナリオ（eval/scenarios/）。build は既存パスを拒否して exit 2。サンドボックス内では $TMPDIR 配下に作る
 python3 eval/harness.py list [--split train|val|test]
@@ -40,15 +41,17 @@ Skill の動作確認は、fixture の `.claude/skills/`（Claude Code）か `.a
 - シナリオを足したら、模範解答を書いて `harness.py score` が `"hard": 1.0` になること、わざと誤った回答で下がることを確かめる。期待値が満たせないシナリオは学習を壊す。
 - **`examples/sample-explanation.md` は `eval/scenarios/state/` のファイルの行番号に依存する**（`order.py:21-27`、`test_order.py:7-23`、`README.md:4` など）。`state` を変えたらサンプル出力と `examples/fixture-walkthrough.md` も直す。
 - `harness.py run` は個人設定を読まない（`--setting-sources project,local`）で `claude -p` を呼び、Skill を `<name>-under-test` の名前で対象リポジトリの `.claude/skills/` に入れる。個人用に同名の Skill がリンクされていても、評価対象がすり替わらないようにするため。
+- Skill は既定で HTML ファイルを渡すが、`run` は書き込みツールを許可せず Markdown を採点するので、依頼文の末尾に `OUTPUT_INSTRUCTION`（Markdown で返答し、ファイルを作らない）を足す。`visuals()` は `code-atlas render` 後の `<pre class="mermaid">` も数える。
 - 採点は英語の正規表現（`MOTIVATION` など）なので、依頼文は英語回答を指定する。test 分割は Skill の改善（SkillOpt など）に使わず、最後の確認用に残す。
 
 ## CLI（`code_atlas/`）
 
-- `git.py` は読み取り専用の git コマンドだけを使い、解析対象リポジトリへ書き込まない。
+- `git.py` は読み取り専用の git コマンドだけを使い、解析対象リポジトリへ書き込まない。すべての呼び出しに `-c core.fsmonitor=false` を付け、対象リポジトリの設定にあるコマンドを実行させない。作業ツリーの指紋は `git diff` の出力ではなく変更ファイルの中身から作る（diff の出力は `diff.noprefix` などの個人設定で変わるため）。
 - プロジェクトの同一性は `git rev-parse --git-common-dir` の絶対パスで決まる。同じリポジトリの worktree は1プロジェクトにまとまり、リポジトリを移動したら `project relocate` で付け替える。
 - `runs` は追記のみで、更新・削除のコマンドを持たない。スキーマを変えるときは `PRAGMA user_version`（現在 1。より新しい DB は拒否）を上げ、既存 DB の移行を `Store._create_schema` に書く。
 - 保存先は `CODE_ATLAS_DATA_DIR` で差し替えられる。テストは一時ディレクトリを使い、実データへ書かない。
 - `render`（`html_report.py`・`components.py`・`report.css`）は Markdown を正本のまま HTML に変える。コンポーネントは解釈できなければ通常のコードとして表示し、内容を落とさない。レポート由来の文字列はすべてエスケープし、生の HTML を通さない。チャートは JS なしの HTML/CSS で、値ラベルと表ビューを必ず付ける（ライトの一部系列色は背景とのコントラストが3:1未満のため）。
+- `path:line` のパーマリンク（`refs.permalink_base`）は github.com と gitlab.com だけに対応し、リモート URL からホストとリポジトリのパスだけを取り出す（認証情報を HTML に出さない）。`render --rev` と、commit / range / project スコープの `history export` だけがリンクし、コミットがリモート追跡ブランチに含まれない場合はリンクしない（`git.published`）。
 - `check-refs`（`refs.py`）は DB を開かない。参照の抽出は正規表現で、ドットかスラッシュを含む語だけをパスとみなす（`10:52` や URL は除外、本文中にそのまま書いた `example.com:443` は誤検出する。`path:1, 5` の `5` のような列挙の2つ目以降は拾わない。引用符なしの `app/[id]/page.tsx:3` のように記号を含むパスは、末尾だけを誤って照合しないよう拾わない。バッククォートで囲めば拾う）。リポジトリ外を指すパスは読まずに「見つからない」扱いにする。
 
 ## Skill 本文を書くときの方針
