@@ -29,6 +29,7 @@ Skill の動作確認は、fixture の `.claude/skills/`（Claude Code）か `.a
 - **配布単位。** 利用者はフォルダごと対象リポジトリや個人用Skillディレクトリへ置くので、各 Skill は単体で完結させる。`SKILL.md` からのリンクは Skill 内 `references/` への相対パスに限り、ルートの `references/` を参照しない。
 - `scripts/check-skills.py` が検証する条件: 6つの Skill が揃っている（`EXPECTED` に列挙。追加・改名時は更新）、frontmatter は `name`（フォルダ名と一致、小文字・数字・ハイフンで64字以内）と `description`（1024字以内）だけ、相対リンクは Skill フォルダ内に解決する。形式が崩れた Skill を黙って読み飛ばすエージェント（pi など）があるため。
 - 6つとも末尾に同じ2段落（報告前の `code-atlas check-refs` と、依頼時の `code-atlas history add ... --report -`）を持ち、違いは `--skill` だけ。CLI の引数を変えたら6つとも直す。`check-skills.py` が「Before delivering, if the `code-atlas` CLI is installed」以降の一致を検証する。
+- 共通の末尾段落から `references/report-components.md`（`code-atlas render` が HTML コンポーネントに変える Markdown 記法）へリンクするため、6つの Skill が同一内容のコピーを持つ。`check-skills.py` が一致を検証するので、直すときは6つとも揃える。記法を変えたら `code_atlas/components.py` とテストも合わせる。
 - 同じ `SKILL.md` を Agent Skills 標準に対応したエージェント（Claude Code・Codex・pi・OpenCode・Gemini CLI・Cursor）で使う。導入先は共通の `~/.agents/skills` と Claude Code 用の `~/.claude/skills` の2箇所（README の表を参照）。特定ホストの frontmatter やツールを前提にせず、使えない場合の手順も書く（例: `skills/understand-change/references/code-reading.md` の CodeGraph あり/なし分岐、`review-change` の `ocr` あり/なし分岐）。frontmatter の `description` が起動判定に使われる。
 - **図の選択ルールは2箇所にある。** `understand-change` 用の正本は同Skill内の `references/diagram-selection.md`。ルートの `references/diagram-selection.md` はSkill横断の設計索引。ルール変更時は矛盾を確認する。
 - 変更理由は差分から確定できないので、Skill はコミットメッセージ・PR本文・Issue・ユーザー提供の文脈を出典付きで使い、なければ「未確定」と書く。`schema` シナリオはこの挙動を試すため、理由をコミットメッセージにだけ書いている。
@@ -47,6 +48,7 @@ Skill の動作確認は、fixture の `.claude/skills/`（Claude Code）か `.a
 - プロジェクトの同一性は `git rev-parse --git-common-dir` の絶対パスで決まる。同じリポジトリの worktree は1プロジェクトにまとまり、リポジトリを移動したら `project relocate` で付け替える。
 - `runs` は追記のみで、更新・削除のコマンドを持たない。スキーマを変えるときは `PRAGMA user_version`（現在 1。より新しい DB は拒否）を上げ、既存 DB の移行を `Store._create_schema` に書く。
 - 保存先は `CODE_ATLAS_DATA_DIR` で差し替えられる。テストは一時ディレクトリを使い、実データへ書かない。
+- `render`（`html_report.py`・`components.py`・`report.css`）は Markdown を正本のまま HTML に変える。コンポーネントは解釈できなければ通常のコードとして表示し、内容を落とさない。レポート由来の文字列はすべてエスケープし、生の HTML を通さない。チャートは JS なしの HTML/CSS で、値ラベルと表ビューを必ず付ける（ライトの一部系列色は背景とのコントラストが3:1未満のため）。
 - `check-refs`（`refs.py`）は DB を開かない。参照の抽出は正規表現で、ドットかスラッシュを含む語だけをパスとみなす（`10:52` や URL は除外、本文中にそのまま書いた `example.com:443` は誤検出する。`path:1, 5` の `5` のような列挙の2つ目以降は拾わない。引用符なしの `app/[id]/page.tsx:3` のように記号を含むパスは、末尾だけを誤って照合しないよう拾わない。バッククォートで囲めば拾う）。リポジトリ外を指すパスは読まずに「見つからない」扱いにする。
 
 ## Skill 本文を書くときの方針

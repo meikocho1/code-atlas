@@ -40,7 +40,8 @@ code-atlas/
 │   │   ├── SKILL.md
 │   │   └── references/
 │   │       ├── code-reading.md
-│   │       └── diagram-selection.md
+│   │       ├── diagram-selection.md
+│   │       └── report-components.md   # 6つのSkillに同じものを同梱
 │   ├── visualize-architecture/
 │   ├── visualize-data-flow/
 │   ├── review-change/
@@ -51,7 +52,7 @@ code-atlas/
 │   ├── er.md
 │   ├── state.md
 │   └── c4.md
-├── code_atlas/                 # 分類・履歴CLI、HTMLレポート表示
+├── code_atlas/                 # 分類・履歴CLI、HTMLレポート表示とコンポーネント
 ├── bin/code-atlas              # 依存パッケージ不要の実行入口
 ├── eval/                       # Skillの評価シナリオとハーネス
 ├── tests/                      # CLIと評価ハーネスのテスト
@@ -61,7 +62,8 @@ code-atlas/
 └── examples/
     ├── fixture-walkthrough.md
     ├── sample-explanation.md
-    └── business-flow.md
+    ├── business-flow.md
+    └── report-components.md    # コンポーネントを使ったレポート例
 ```
 
 `skills/<name>/` が単体の配布単位です。ルートの `references/` は設計ガイドであり、Skillが実行時に必要とする参照はSkillフォルダ内に収めています。
@@ -159,7 +161,30 @@ python3 -m code_atlas history export RUN_ID /path/to/saved-report.html
 python3 -m code_atlas history export RUN_ID /path/to/saved-report.md --format md
 ```
 
-出力はCSSを含む1つのHTMLファイルです。Mermaid図だけは表示時に外部のMermaidライブラリを読み込むため、図の描画にはインターネット接続が必要です。オフラインでも本文と図の元テキストは読めます。見出し、段落、箇条書き、表、引用、コードブロック、リンクというCode Atlasのレポート書式を対象にしており、複雑なMarkdownの完全再現は目的としていません。HTML内ではレポートに含まれる生のHTMLを文字として表示します。レポート内の `path:line` は根拠として表示しますが、Whiteboardのようなコードへのジャンプ機能はありません。既存ファイルへの上書きはしません。見た目は [`report.css`](code_atlas/report.css) で調整できます。
+出力はCSSを含む1つのHTMLファイルです。Mermaid図だけは表示時に外部のMermaidライブラリを読み込むため、図の描画にはインターネット接続が必要です。オフラインでも本文と図の元テキストは読めます。見出し、段落、箇条書き、表、引用、コードブロック、リンクと下記のコンポーネントというCode Atlasのレポート書式を対象にしており、複雑なMarkdownの完全再現は目的としていません。HTML内ではレポートに含まれる生のHTMLを文字として表示します。レポート内の `path:line` は根拠として表示しますが、Whiteboardのようなコードへのジャンプ機能はありません。既存ファイルへの上書きはしません。見た目は [`report.css`](code_atlas/report.css) で調整できます。
+
+### レポートのコンポーネント
+
+Markdown のままでも読める記法で書くと、HTML では KPIタイル・チャート・Before/After・注意書き・重大度バッジとして表示されます。Skill は数字や対比が文章より速く伝わる場合だけ使い、数値は `git diff --numstat` や指摘件数など実際に確認したものに限ります（[記法と使いどころ](skills/understand-change/references/report-components.md)、[レポート例](examples/report-components.md)）。
+
+| 記法 | 表示 | 主な用途 |
+| --- | --- | --- |
+| ` ```atlas-stats ` | KPIタイル | 変更ファイル数・追加行・指摘件数などの見出し数値 |
+| ` ```atlas-chart bar 題名 ` | 横棒グラフ | ディレクトリ別の変更量など、少数の量の比較 |
+| ` ```atlas-chart diff 題名 ` | 追加/削除の積み上げ棒 | 大きな変更がどのファイルに集中しているか |
+| ` ```atlas-chart share 題名 ` | 構成比バー | 重大度別の指摘数、コード/テスト/ドキュメントの内訳 |
+| ` ```atlas-compare ` | Before/After カード | 振る舞いの変化 |
+| `> [!NOTE]` `> [!WARNING]` など | 注意書き（GitHub のアラート記法） | 解析の限界、確定できない理由 |
+| `### [high] 見出し`、表のセルに `critical` など | 重大度バッジ | レビューの指摘 |
+
+````markdown
+```atlas-chart diff ファイル別の変更行数
+`test_order.py`: +27 −0
+`order.py`: +9 −0
+```
+````
+
+データ行は `ラベル: 値` の形式で、「コロン+空白」で区切ります（チャートは最後の、KPIタイルと Before/After は最初の区切りを使います）。チャートはJavaScriptを使わずHTML/CSSだけで描き、値を各棒の横に表示します。さらに「表で見る」で同じデータを表でも確認できます。配色は色覚多様性に配慮して検証したパレットを使い、ライト・ダーク両方に対応します。解釈できないブロックは通常のコードとしてそのまま表示し、内容は失われません。
 
 ## 設計思想
 

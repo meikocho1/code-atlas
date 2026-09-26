@@ -7,12 +7,17 @@ import re
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from . import components
+
 
 _HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$")
 _FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})([^\r\n]*)$")
 _LIST = re.compile(r"^ {0,3}([-*+]|\d+[.)])\s+(.+)$")
 _RULE = re.compile(r"^\s*(?:-{3,}|\*{3,}|_{3,})\s*$")
 _TABLE_RULE = re.compile(r"^\s*\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?\s*$")
+_REF = re.compile(r"^[^\s`]*[./][^\s`]*:\d+(?:[-–]\d+)?$")
+_SEVERITY_HEADING = re.compile(r"^\[(critical|high|medium|low)\]\s+(.+)$", re.IGNORECASE)
+_CALLOUT = re.compile(r"^\[!(note|tip|important|warning|caution)\]\s*$", re.IGNORECASE)
 
 
 def _safe_url(value: str) -> str | None:
@@ -42,7 +47,9 @@ def _inline(value: str, depth: int = 0) -> str:
             marker = "`" * length
             end = value.find(marker, index + length)
             if end != -1:
-                result.append(f"<code>{html.escape(value[index + length:end])}</code>")
+                code = value[index + length:end]
+                css_class = ' class="atlas-ref"' if _REF.match(code) else ""
+                result.append(f"<code{css_class}>{html.escape(code)}</code>")
                 index = end + length
                 continue
         if value[index] == "[":
@@ -109,7 +116,7 @@ def _starts_block(line: str) -> bool:
                 or _RULE.match(line) or line.lstrip().startswith(">"))
 
 
-def _content(markdown: str) -> tuple[str, str, str, bool]:
+def _content(markdown: str, language: str) -> tuple[str, str, str, bool]:
     lines = markdown.splitlines()
     parts: list[str] = []
     contents: list[str] = []
@@ -127,7 +134,7 @@ def _content(markdown: str) -> tuple[str, str, str, bool]:
 
         fence = _FENCE.match(line)
         if fence:
-            marker, language = fence.groups()
+            marker, info = fence.groups()
             position += 1
             code: list[str] = []
             while position < len(lines):
@@ -137,13 +144,20 @@ def _content(markdown: str) -> tuple[str, str, str, bool]:
                     break
                 code.append(lines[position])
                 position += 1
+            name, _, arguments = info.strip().partition(" ")
+            renderer = components.RENDERERS.get(name.lower())
+            rendered = renderer(arguments, "\n".join(code), _inline, language) if renderer else None
+            if rendered is not None:
+                parts.append(rendered)
+                continue
             text = html.escape("\n".join(code))
-            if language.strip().lower() == "mermaid":
+            if name.lower() == "mermaid":
                 has_diagram = True
-                parts.append(f'<div class="atlas-diagram"><span class="atlas-diagram-hint">図は左右にスクロールできます</span><pre class="mermaid" tabindex="0">{text}</pre></div>')
+                hint = components.text(language, "scroll")
+                parts.append(f'<div class="atlas-diagram"><span class="atlas-diagram-hint">{hint}</span><pre class="mermaid" tabindex="0">{text}</pre></div>')
             else:
-                label = html.escape(language.strip().split()[0] if language.strip() else "text", quote=True)
-                parts.append(f'<pre class="atlas-code"><code class="language-{label}">{text}</code></pre>')
+                label = html.escape(name or "text", quote=True)
+                parts.append(f'<div class="atlas-code-block"><span class="atlas-code-label">{label}</span><pre class="atlas-code"><code class="language-{label}">{text}</code></pre></div>')
             continue
 
         heading = _HEADING.match(line)
@@ -161,7 +175,12 @@ def _content(markdown: str) -> tuple[str, str, str, bool]:
                 css_class = "atlas-business" if "BUSINESS" in label.upper() else "atlas-section"
                 parts.append(f'<section id="section-{section_number}" class="{css_class}">')
                 contents.append(f'<a href="#section-{section_number}">{html.escape(re.sub(r"[`*_]", "", label))}</a>')
-            parts.append(f"<h{level}>{_inline(label)}</h{level}>")
+            severity = _SEVERITY_HEADING.match(label)
+            if severity:
+                badge = components.severity_badge(severity.group(1))
+                parts.append(f'<h{level} class="atlas-finding">{badge} {_inline(severity.group(2))}</h{level}>')
+            else:
+                parts.append(f"<h{level}>{_inline(label)}</h{level}>")
             position += 1
             continue
 
@@ -182,7 +201,7 @@ def _content(markdown: str) -> tuple[str, str, str, bool]:
             table.append("</tr></thead><tbody>")
             for row in rows:
                 table.append("<tr>")
-                table.extend(f"<td>{_inline(row[index]) if index < len(row) else ''}</td>" for index in range(len(headers)))
+                table.extend(f"<td>{_cell(row[index]) if index < len(row) else ''}</td>" for index in range(len(headers)))
                 table.append("</tr>")
             table.append("</tbody></table></div>")
             parts.append("".join(table))
@@ -205,9 +224,14 @@ def _content(markdown: str) -> tuple[str, str, str, bool]:
         if line.lstrip().startswith(">"):
             quoted = []
             while position < len(lines) and lines[position].lstrip().startswith(">"):
-                quoted.append(lines[position].lstrip()[1:].strip())
+                quoted.append(re.sub(r"^ ?", "", lines[position].lstrip()[1:], count=1))
                 position += 1
-            parts.append(f"<blockquote><p>{_inline(' '.join(quoted))}</p></blockquote>")
+            alert = _CALLOUT.match(quoted[0].strip())
+            inner = _content("\n".join(quoted[1:] if alert else quoted), language)[1]
+            if alert:
+                parts.append(components.callout(alert.group(1).lower(), inner, language))
+            else:
+                parts.append(f"<blockquote>{inner}</blockquote>")
             continue
 
         paragraph = [line.strip()]
@@ -228,6 +252,12 @@ def _content(markdown: str) -> tuple[str, str, str, bool]:
     return title, "\n".join(parts), "\n".join(contents), has_diagram
 
 
+def _cell(value: str) -> str:
+    if value.strip().lower() in components.SEVERITIES:
+        return components.severity_badge(value)
+    return _inline(value)
+
+
 def render_html(markdown: str, destination: Path) -> Path:
     """Create a standalone HTML report without overwriting an existing file."""
     if not markdown.strip():
@@ -235,15 +265,32 @@ def render_html(markdown: str, destination: Path) -> Path:
     destination = destination.expanduser()
     if destination.suffix.lower() != ".html":
         raise ValueError("HTML destination must end in .html")
-    title, content, toc, has_diagram = _content(markdown)
-    style = Path(__file__).with_name("report.css").read_text(encoding="utf-8")
     language = "ja" if re.search(r"[\u3040-\u30ff\u3400-\u9fff]", markdown) else "en"
-    nav = f'<nav aria-label="目次"><span class="atlas-nav-label">CONTENTS</span>{toc}</nav>' if toc else ""
+    title, content, toc, has_diagram = _content(markdown, language)
+    style = Path(__file__).with_name("report.css").read_text(encoding="utf-8")
+    contents_label = "目次" if language == "ja" else "Contents"
+    nav = f'<nav aria-label="{contents_label}"><span class="atlas-nav-label">CONTENTS</span>{toc}</nav>' if toc else ""
     diagram_script = """
 <script type="module">
   import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
-  const dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-  mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: dark ? 'dark' : 'neutral' });
+  const token = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  mermaid.initialize({
+    startOnLoad: false,
+    securityLevel: 'strict',
+    theme: 'base',
+    themeVariables: {
+      darkMode: window.matchMedia('(prefers-color-scheme: dark)').matches,
+      background: token('--paper'),
+      primaryColor: token('--accent-soft'),
+      primaryTextColor: token('--ink'),
+      primaryBorderColor: token('--line-strong'),
+      lineColor: token('--muted'),
+      secondaryColor: token('--page'),
+      tertiaryColor: token('--paper'),
+      edgeLabelBackground: token('--paper'),
+      fontFamily: getComputedStyle(document.body).fontFamily,
+    },
+  });
   mermaid.run({ querySelector: '.mermaid' }).then(() => {
     if (window.matchMedia('(max-width: 850px)').matches) {
       document.querySelectorAll('.atlas-diagram .mermaid').forEach((diagram) => {
