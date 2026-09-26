@@ -8,9 +8,9 @@ import sqlite3
 import sys
 from pathlib import Path
 
-from .git import GitError, inspect_repo, resolve_ref, worktree_fingerprint
+from .git import GitError, inspect_repo, published, resolve_ref, worktree_fingerprint
 from .html_report import render_html
-from .refs import check_refs, find_refs
+from .refs import check_refs, find_refs, permalink_base
 from .store import Store
 
 
@@ -66,6 +66,8 @@ def parser() -> argparse.ArgumentParser:
     render = groups.add_parser("render", help="Render a Markdown report as HTML")
     render.add_argument("--report", required=True, help="Markdown report file, or - for stdin")
     render.add_argument("destination", help="New .html file to create")
+    render.add_argument("--repo", default=".", help="Repository the report describes")
+    render.add_argument("--rev", help="Commit the report cites; links path:line references to it on GitHub or GitLab")
 
     refs = groups.add_parser("check-refs", help="Check that a report's path:line references exist")
     refs.add_argument("--repo", default=".", help="Repository the report describes")
@@ -99,6 +101,21 @@ def _report_text(path: str) -> str:
     if not text.strip():
         raise ValueError("Report is empty")
     return text
+
+
+# Only these scopes cite a commit's lines; worktree references would point at the wrong code.
+LINKED_SCOPES = {"commit", "range", "project"}
+
+
+def _link_base(remote: str | None, sha: str | None, paths: list[str]) -> str | None:
+    """Permalink prefix for a commit, unless a local clone shows the commit was never pushed."""
+    base = permalink_base(remote, sha)
+    for path in paths:
+        try:
+            return base if base and published(inspect_repo(path), sha) else None
+        except GitError:
+            continue  # A registered path that moved or was deleted.
+    return base
 
 
 def execute(args: argparse.Namespace, store: Store) -> object:
@@ -160,8 +177,12 @@ def execute(args: argparse.Namespace, store: Store) -> object:
     if args.action == "export":
         destination = Path(args.destination).expanduser()
         if args.format == "html":
-            rendered = render_html(row["report"], destination)
-            return {"id": args.id, "destination": str(rendered), "format": "html"}
+            base = None
+            if row["scope"] in LINKED_SCOPES:
+                project = store.get_project(row["project_id"])
+                base = _link_base(project["remote"], row["head_sha"], store.paths(project["id"]))
+            rendered = render_html(row["report"], destination, base)
+            return {"id": args.id, "destination": str(rendered), "format": "html", "links": base}
         with destination.open("x", encoding="utf-8") as stream:
             stream.write(row["report"])
         return {"id": args.id, "destination": str(destination.resolve()), "format": "md"}
@@ -187,8 +208,12 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"{len(results) - len(problems)}/{len(results)} references resolve in {rev or 'the working tree'}")
             return 1 if problems else 0
         if args.group == "render":
-            destination = render_html(_report_text(args.report), Path(args.destination))
-            result = {"destination": str(destination), "format": "html"}
+            base = None
+            if args.rev:
+                repo = inspect_repo(args.repo)
+                base = _link_base(repo.remote, resolve_ref(repo, args.rev), [str(repo.root)])
+            destination = render_html(_report_text(args.report), Path(args.destination), base)
+            result = {"destination": str(destination), "format": "html", "links": base}
         else:
             with Store() as store:
                 result = execute(args, store)

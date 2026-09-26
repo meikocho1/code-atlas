@@ -57,6 +57,12 @@ def resolve_ref(repo: Repo, ref: str) -> str:
     return _git(repo.root, "rev-parse", "--verify", f"{ref}^{{commit}}").decode().strip()
 
 
+def published(repo: Repo, sha: str) -> bool:
+    """Whether a remote-tracking branch contains the commit, so a link to it should resolve."""
+    refs = _git(repo.root, "for-each-ref", "--count=1", "--format=%(refname)", "--contains", sha, "refs/remotes", check=False)
+    return bool(refs.strip())
+
+
 def read_file(repo: Repo, path: str, rev: str | None = None) -> bytes | None:
     """Read a repository file from the working tree or a resolved commit; None if absent or outside."""
     target = Path(os.path.normpath(repo.root / path))

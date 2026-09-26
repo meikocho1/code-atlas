@@ -51,6 +51,7 @@ Skill の動作確認は、fixture の `.claude/skills/`（Claude Code）か `.a
 - `runs` は追記のみで、更新・削除のコマンドを持たない。スキーマを変えるときは `PRAGMA user_version`（現在 1。より新しい DB は拒否）を上げ、既存 DB の移行を `Store._create_schema` に書く。
 - 保存先は `CODE_ATLAS_DATA_DIR` で差し替えられる。テストは一時ディレクトリを使い、実データへ書かない。
 - `render`（`html_report.py`・`components.py`・`report.css`）は Markdown を正本のまま HTML に変える。コンポーネントは解釈できなければ通常のコードとして表示し、内容を落とさない。レポート由来の文字列はすべてエスケープし、生の HTML を通さない。チャートは JS なしの HTML/CSS で、値ラベルと表ビューを必ず付ける（ライトの一部系列色は背景とのコントラストが3:1未満のため）。
+- `path:line` のパーマリンク（`refs.permalink_base`）は github.com と gitlab.com だけに対応し、リモート URL からホストとリポジトリのパスだけを取り出す（認証情報を HTML に出さない）。`render --rev` と、commit / range / project スコープの `history export` だけがリンクし、コミットがリモート追跡ブランチに含まれない場合はリンクしない（`git.published`）。
 - `check-refs`（`refs.py`）は DB を開かない。参照の抽出は正規表現で、ドットかスラッシュを含む語だけをパスとみなす（`10:52` や URL は除外、本文中にそのまま書いた `example.com:443` は誤検出する。`path:1, 5` の `5` のような列挙の2つ目以降は拾わない。引用符なしの `app/[id]/page.tsx:3` のように記号を含むパスは、末尾だけを誤って照合しないよう拾わない。バッククォートで囲めば拾う）。リポジトリ外を指すパスは読まずに「見つからない」扱いにする。
 
 ## Skill 本文を書くときの方針
