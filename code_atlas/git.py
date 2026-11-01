@@ -28,6 +28,14 @@ def _git(path: Path, *args: str, check: bool = True) -> bytes:
 
 
 @dataclass(frozen=True)
+class FileChange:
+    path: str
+    status: str  # A, M, or D
+    added: int | None  # None for a binary file
+    removed: int | None
+
+
+@dataclass(frozen=True)
 class Repo:
     root: Path
     common_dir: Path
@@ -110,3 +118,54 @@ def worktree_fingerprint(repo: Repo) -> str | None:
         else:
             digest.update(b"\0missing\0")
     return digest.hexdigest()
+
+
+# Fixed diff options, so user settings such as diff.renames or diff.external never change the counts.
+_DIFF_OPTIONS = ("--no-renames", "--no-ext-diff", "--no-textconv", "-z")
+
+
+def _untracked_lines(path: Path) -> int | None:
+    data = path.read_bytes() if path.is_file() and not path.is_symlink() else b""
+    if b"\0" in data[:8000]:
+        return None
+    return data.count(b"\n") + (1 if data and not data.endswith(b"\n") else 0)
+
+
+def change_stats(repo: Repo, base: str | None = None, head: str | None = None) -> list[FileChange]:
+    """Count added and removed lines per file, read-only.
+
+    Without base or head, compare HEAD with the working tree, including untracked files.
+    With head alone, compare it with its first parent. With base, compare head (default HEAD)
+    with the merge base, as a pull request does.
+    """
+    empty_tree = _git(repo.root, "hash-object", "-t", "tree", os.devnull).decode().strip()
+    worktree = base is None and head is None
+    if worktree:
+        revisions = [repo.head or empty_tree]
+    else:
+        end = resolve_ref(repo, head or "HEAD")
+        if base:
+            start = _git(repo.root, "merge-base", resolve_ref(repo, base), end).decode().strip()
+        else:
+            parent = _git(repo.root, "rev-parse", "--verify", "--quiet", f"{end}^", check=False).decode().strip()
+            start = parent or empty_tree
+        revisions = [start, end]
+    numstat = _git(repo.root, "diff", "--numstat", *_DIFF_OPTIONS, *revisions, "--").split(b"\0")
+    statuses = _git(repo.root, "diff", "--name-status", *_DIFF_OPTIONS, *revisions, "--").split(b"\0")
+    status_of = {os.fsdecode(statuses[index + 1]): os.fsdecode(statuses[index])[:1]
+                 for index in range(0, len(statuses) - 1, 2) if statuses[index]}
+    changes = []
+    for record in numstat:
+        if not record:
+            continue
+        added, removed, name = record.split(b"\t", 2)
+        path = os.fsdecode(name)
+        binary = added == b"-"
+        changes.append(FileChange(path, status_of.get(path, "M"),
+                                  None if binary else int(added), None if binary else int(removed)))
+    if worktree:
+        others = _git(repo.root, "ls-files", "--others", "--exclude-standard", "-z").split(b"\0")
+        for raw_name in sorted(name for name in others if name):
+            lines = _untracked_lines(repo.root / os.fsdecode(raw_name))
+            changes.append(FileChange(os.fsdecode(raw_name), "A", lines, None if lines is None else 0))
+    return changes

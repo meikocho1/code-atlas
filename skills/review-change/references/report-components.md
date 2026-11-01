@@ -1,8 +1,19 @@
 # Report components
 
-`code-atlas render` turns a few Markdown conventions into HTML components: stat tiles, charts, a Before/After comparison, callouts, and severity badges. Each one is plain text in Markdown, so the saved report, `check-refs`, and hosts without the renderer still read correctly. A block that does not parse is shown as ordinary code, never dropped.
+`code-atlas render` turns a few Markdown conventions into components: stat tiles, charts, a flow, a Before/After comparison, callouts, and severity badges. Each one is plain text in Markdown, so the saved report, `check-refs`, and hosts without the renderer still read correctly. A block that does not parse is shown as ordinary code, never dropped. `code-atlas render --format github` turns the same report into Markdown that GitHub displays in a pull request.
 
-Components are optional. Use one only when it answers a reader question faster than a sentence or table would. A tiny change needs none. They never replace the one-sentence conclusion or the evidence beside each claim.
+## Report shape
+
+Readers should get the point from the top of the report before reading any paragraph. For a report about a change, use this order:
+
+1. A title and the one-sentence conclusion (`**Summary:**` or `**結論:**`).
+2. The scope line (`**Scope:**` or `**対象:**`).
+3. The output of `code-atlas overview` for the analyzed scope, pasted unchanged: stat tiles and, when there is something to compare, charts of changed lines per file and by kind. It is computed from Git, so its numbers need no further checking. Pass `--lang ja` for a Japanese report, `--head <commit>` for one commit, or `--base <base> --head <head>` for a range. Omit it when the CLI is unavailable rather than estimating the numbers.
+4. One section per lens (BUSINESS, SYSTEM, CODE), each opening with the component that answers its question: a Before/After for a changed behavior, a flow for steps or a decision, a Mermaid diagram for states, ordering, or structure.
+
+Show rather than tell. When the decisive point is a sequence of steps or a branch, draw it as a flow instead of describing it in a paragraph. When it is a change in outcomes, use a Before/After. Keep the prose for what a picture cannot carry: the reason, the evidence, and the uncertainty.
+
+A tiny change (a typo, one constant) still gets the conclusion and the overview tiles, but usually no further component. Components never replace the conclusion or the evidence beside each claim.
 
 ## Evidence rules
 
@@ -61,6 +72,22 @@ low: 0
 ```
 ````
 
+### Flow
+
+Use it for steps a person or the code goes through, and for a decision with its outcomes. Each line is a step, optionally `actor: action`. A `condition => result` line branches from the step above it; the next plain line continues the main path. It renders without a script, so it also works offline, and becomes Mermaid in GitHub output. Use Mermaid instead for states, message ordering between services, or entity relationships.
+
+````markdown
+```atlas-flow How cancel() decides
+Caller: calls `cancel(order)`
+`cancel()`: checks the order status
+new => cancelled, no refund (`False`)
+paid => cancelled, refund needed (`True`)
+shipped => `ValueError`
+```
+````
+
+Every step and branch needs the same evidence as a diagram edge. Name the caller generically ("Caller") when the code does not show who calls it.
+
 ### Before / After
 
 Use it for a behavior change in two to four states. Repeat a key to add another bullet. The last column is emphasized as the result.
@@ -90,6 +117,10 @@ A heading that starts with `[critical]`, `[high]`, `[medium]`, or `[low]` gets a
 ### [high] Cancelling a shipped order silently succeeds
 ```
 
+## Pull requests
+
+For a pull request comment or description, render the same Markdown with `code-atlas render --format github --report - -` (stdout) or a new `.md` file. Stat tiles, charts, and comparisons become tables, with emoji squares beside the written values. Flows become Mermaid, severities become an icon and a word, and callouts and Mermaid pass through. Add `--repo <repository> --rev <commit>` so `path:line` references link to the pushed commit.
+
 ## Without the renderer
 
-If `code-atlas` is unavailable and you write HTML yourself, keep the same order and meaning. Render stat tiles as a row of labeled numbers and charts as labeled bars with the value written at each bar, and include the data as a table. Render callouts with a visible label, not color alone.
+If `code-atlas` is unavailable and you write HTML yourself, keep the same order and meaning. Render stat tiles as a row of labeled numbers and charts as labeled bars with the value written at each bar, and include the data as a table. Render a flow as numbered steps with the branches listed under their step. Render callouts with a visible label, not color alone.

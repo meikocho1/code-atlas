@@ -9,4 +9,4 @@ Read a focused guide only when the selected view needs it:
 - [State](state.md): legal states and transitions.
 - [C4-style component view](c4.md): boundaries and dependencies.
 
-For user-facing steps and decisions, use a small Business Flow. For a few old/new facts, use a Before/After table. Neither needs a separate diagram manual in this release.
+For user-facing steps and decisions, use a small Business Flow: an `atlas-flow` component (renders without a script and becomes Mermaid in GitHub output), or Mermaid `flowchart` for loops and merging paths. For a few old/new facts, use a Before/After table. Neither needs a separate diagram manual in this release.

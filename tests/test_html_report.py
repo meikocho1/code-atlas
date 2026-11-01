@@ -32,7 +32,9 @@ flowchart TD
             output = path.read_text(encoding="utf-8")
         self.assertIn("<title>注文の変更</title>", output)
         self.assertIn('class="atlas-summary"', output)
-        self.assertIn('class="atlas-business"', output)
+        self.assertIn('class="atlas-section atlas-lens-business"', output)
+        self.assertIn('<h2><span class="atlas-layer atlas-layer-business">BUSINESS</span> 利用者への影響</h2>', output)
+        self.assertIn('<header class="atlas-glance"', output)
         self.assertIn("<th scope=\"col\">状態</th>", output)
         self.assertIn('class="mermaid"', output)
         self.assertIn("mermaid@11", output)
@@ -165,6 +167,29 @@ Only: one column
         self.assertIn('<code class="language-atlas-chart">order.py: many', output)
         self.assertIn("a: 1", output)
         self.assertIn("Only: one column", output)
+
+    def test_renders_flow_steps_and_branches(self):
+        output = self.render("""# Title
+
+```atlas-flow Cancel <check>
+Caller: calls `cancel()`
+Check the status
+paid => refund **needed**
+shipped => error
+```
+
+```atlas-flow
+=> no step before this branch
+only: one step
+```
+""")
+        self.assertIn('<figure class="atlas-flow"><figcaption>Cancel &lt;check&gt;</figcaption>', output)
+        self.assertIn('<span class="atlas-flow-actor">Caller</span><span class="atlas-flow-action">calls <code>cancel()</code></span>', output)
+        self.assertIn('<li class="atlas-flow-step atlas-flow-decision">', output)
+        self.assertIn('<span class="atlas-flow-condition">paid</span>', output)
+        self.assertIn('<span class="atlas-flow-result">refund <strong>needed</strong></span>', output)
+        self.assertEqual(output.count('<figure class="atlas-flow">'), 1)
+        self.assertIn("=&gt; no step before this branch", output)
 
     def test_severity_badges_in_headings_and_table_cells(self):
         output = self.render("""# Review

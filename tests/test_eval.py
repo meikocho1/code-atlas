@@ -61,6 +61,8 @@ class EvalHarnessTests(unittest.TestCase):
         rendered = f'<div class="atlas-diagram"><pre class="mermaid" tabindex="0">{diagram}</pre></div>'
         self.assertEqual(harness.visuals(rendered), ["er"])
         self.assertEqual(harness.visuals(f"```mermaid\n{diagram}```"), ["er"])
+        self.assertEqual(harness.visuals("```atlas-flow\nA: start\nB: end\n```"), ["flowchart"])
+        self.assertEqual(harness.visuals('<figure class="atlas-flow"><ol></ol></figure>'), ["flowchart"])
 
 
 if __name__ == "__main__":

@@ -4,11 +4,22 @@
 
 **対象:** `Baseline order lifecycle` コミットから現在の作業ツリーまで。未追跡の `test_order.py` を含みます。
 
-```atlas-stats
-変更ファイル: 3 | 未追跡 1 を含む
+```atlas-stats 変更の概要
+変更ファイル: 3 | 追加 1・変更 2・削除 0
 追加行: +37
 削除行: −0
-公開関数: +1 | `cancel()`
+```
+
+```atlas-chart diff ファイル別の変更行数
+`test_order.py`: +27 −0
+`order.py`: +9 −0
+`README.md`: +1 −0
+```
+
+```atlas-chart share 変更行の内訳（パスから分類）
+コード: 9
+テスト: 27
+ドキュメント: 1
 ```
 
 ## 利用者への影響（BUSINESS）
@@ -28,34 +39,19 @@ After: 発送済みの注文はキャンセルできない
 
 注文の状態は実行中のメモリに保持され、`order.py` 内で変更されます。データベースや決済サービスへの連絡は、この処理にはありません（`order.py:4-6`, `order.py:21-27`）。
 
-```mermaid
-stateDiagram-v2
-    [*] --> new
-    new --> paid: 支払い
-    paid --> shipped: 発送
-    new --> cancelled: キャンセル / 返金不要
-    paid --> cancelled: キャンセル / 返金要
+```atlas-flow `cancel()` の判定
+呼び出し元: `cancel(order)` を呼ぶ
+`cancel()`: 注文の状態を確かめる
+new => `cancelled` にして返金不要（`False`）を返す
+paid => `cancelled` にして返金要（`True`）を返す
+shipped など => `ValueError`（キャンセルできない）
 ```
 
-キャンセルできるのは `new` と `paid` からだけです。`shipped` からのキャンセル経路はありません（`order.py:9-27`）。
+キャンセルできるのは `new` と `paid` からだけです。`shipped` からのキャンセル経路はありません（`order.py:21-27`）。
 
 ## 実装の根拠（CODE）
 
 `cancel()` は注文の状態が `new` または `paid` かを確かめ、それ以外ならエラーにします。元の状態が `paid` だったかを記録してから `cancelled` に変更します（`order.py:21-27`）。
-
-変更の大半はテストです。実装の追加は1関数に収まっています。
-
-```atlas-chart diff ファイル別の変更行数
-`test_order.py`: +27 −0
-`order.py`: +9 −0
-`README.md`: +1 −0
-```
-
-```atlas-chart share 追加行の内訳
-テスト: 27
-実装: 9
-ドキュメント: 1
-```
 
 > [!NOTE]
 > 変更は未コミットで、PRや課題がないため、キャンセルを追加した理由は確定できません。

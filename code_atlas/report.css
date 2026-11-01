@@ -153,11 +153,6 @@ section {
   border-top: 1px solid var(--line);
   scroll-margin-top: 2rem;
 }
-section.atlas-business {
-  padding: 2rem 0 0;
-  border-top: 2px solid var(--ink);
-}
-section.atlas-business h2 { color: var(--ink); }
 ul, ol { padding-left: 1.35rem; }
 li { margin: 0.35rem 0; }
 li::marker { color: var(--muted); }
@@ -222,6 +217,106 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 2rem 0; }
     font-size: 0.75rem;
   }
 }
+/* ---------- At a glance: title, conclusion, scope, and overview before the first section ---------- */
+.atlas-glance > :first-child { margin-top: 0; }
+.atlas-glance .atlas-stats-block:first-of-type { margin-top: 1.6rem; }
+.atlas-glance + section { margin-top: 2.6rem; }
+
+/* ---------- BUSINESS / SYSTEM / CODE lenses: a labeled tag, so color is never the only cue ---------- */
+.atlas-layer {
+  --lens: var(--series-1);
+  display: inline-block;
+  padding: 0.1rem 0.5rem 0.1rem 0.45rem;
+  border-left: 3px solid var(--lens);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--lens) 12%, var(--paper));
+  color: var(--ink);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  line-height: 1.6;
+  vertical-align: 0.3em;
+}
+.atlas-layer-system { --lens: var(--series-2); }
+.atlas-layer-code { --lens: var(--series-3); }
+h2 .atlas-layer { margin-right: 0.4rem; }
+nav a { display: flex; align-items: baseline; gap: 0.45rem; }
+nav a .atlas-layer { flex: none; font-size: 0.55rem; vertical-align: 0; }
+
+/* ---------- Flow: numbered steps with branches, no script ---------- */
+.atlas-flow {
+  margin: 1.4rem 0;
+  padding: 1.1rem 1.2rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+}
+.atlas-flow figcaption { margin: 0 0 0.9rem; font-size: 0.92rem; font-weight: 700; }
+.atlas-flow-steps {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.9rem;
+  margin: 0;
+  padding: 0 0 0.3rem;
+  overflow-x: auto;
+  list-style: none;
+}
+.atlas-flow-step {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 150px;
+  max-width: 260px;
+  margin: 0;
+}
+.atlas-flow-decision { flex-grow: 1.6; max-width: 340px; }
+.atlas-flow-step:not(:last-child)::after {
+  content: "→";
+  position: absolute;
+  top: 2.05rem;
+  right: -1.45rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+.atlas-flow-number {
+  display: inline-grid;
+  place-items: center;
+  width: 1.3rem;
+  height: 1.3rem;
+  margin-bottom: 0.35rem;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+.atlas-flow-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--page);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+.atlas-flow-actor { color: var(--muted); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.03em; }
+.atlas-flow-action { font-weight: 600; }
+.atlas-flow-branches { display: grid; gap: 0.35rem; margin: 0.45rem 0 0; padding: 0; list-style: none; }
+.atlas-flow-branches li {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  background: var(--paper);
+  font-size: 0.8rem;
+}
+.atlas-flow-condition { font-weight: 700; }
+.atlas-flow-arrow { color: var(--muted); }
+
 /* ---------- Reading aids ---------- */
 code.atlas-ref {
   border: 1px solid var(--line);
@@ -411,6 +506,9 @@ h2.atlas-finding .atlas-badge, h3.atlas-finding .atlas-badge { margin-right: 0.3
 
 @media (max-width: 640px) {
   .atlas-compare { grid-template-columns: 1fr; }
+  .atlas-flow-steps { flex-direction: column; gap: 1.5rem; overflow: visible; }
+  .atlas-flow-step, .atlas-flow-decision { max-width: none; width: 100%; }
+  .atlas-flow-step:not(:last-child)::after { content: "↓"; top: auto; right: auto; bottom: -1.35rem; left: 0.35rem; }
   .atlas-bar-row { grid-template-columns: minmax(0, 1fr) auto; row-gap: 0.2rem; }
   .atlas-bar-label { grid-column: 1 / -1; }
 }
@@ -435,6 +533,7 @@ h2.atlas-finding .atlas-badge, h3.atlas-finding .atlas-badge { margin-right: 0.3
   .atlas-layout { display: block; width: 100%; padding: 0; }
   main { border: 0; box-shadow: none; padding: 0; }
   section { break-inside: avoid; }
-  .atlas-chart, .atlas-stat, .atlas-callout, .atlas-compare-card { break-inside: avoid; }
+  .atlas-chart, .atlas-stat, .atlas-callout, .atlas-compare-card, .atlas-flow { break-inside: avoid; }
+  .atlas-flow-steps { flex-wrap: wrap; overflow: visible; }
   .atlas-chart-table { display: none; }
 }

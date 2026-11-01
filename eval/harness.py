@@ -84,7 +84,7 @@ def build(scenario_id: str, dest: Path) -> dict:
 
 
 def visuals(report: str) -> list[str]:
-    """Name each Mermaid diagram, whether left as a Markdown fence or rendered by `code-atlas render`."""
+    """Name each diagram, whether left as a Markdown fence or rendered by `code-atlas render`."""
     kinds = []
     blocks = re.findall(r"```mermaid[^\n]*\n(.*?)```", report, re.DOTALL)
     blocks += re.findall(r'<pre class="mermaid"[^>]*>(.*?)</pre>', report, re.DOTALL)
@@ -92,6 +92,9 @@ def visuals(report: str) -> list[str]:
         words = block.split()
         first = words[0] if words else ""
         kinds.append(next((kind for prefix, kind in DIAGRAMS.items() if first.startswith(prefix)), "other"))
+    # An atlas-flow component is a Business Flow drawn without Mermaid.
+    kinds += ["flowchart"] * (len(re.findall(r"^```atlas-flow\b", report, re.MULTILINE))
+                              + report.count('<figure class="atlas-flow">'))
     return kinds
 
 
