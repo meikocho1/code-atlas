@@ -21,18 +21,43 @@ _TEXT = {
         "table": "表で見る", "item": "項目", "value": "値", "share": "割合", "added": "追加", "removed": "削除",
         "other": "その他", "note": "補足", "tip": "ヒント", "important": "重要", "warning": "注意", "caution": "警告",
         "scroll": "図は左右にスクロールできます", "glance": "ひと目で", "condition": "条件", "result": "結果",
-        "step": "手順",
+        "step": "手順", "added": "追加", "changed": "変更", "removed": "削除", "unchanged": "影響なし",
+        "unknown": "未確認", "impact": "影響範囲", "who": "対象", "change": "影響", "detail": "内容",
     },
     "en": {
         "table": "View as table", "item": "Item", "value": "Value", "share": "Share", "added": "Added", "removed": "Removed",
         "other": "Other", "note": "Note", "tip": "Tip", "important": "Important", "warning": "Warning", "caution": "Caution",
         "scroll": "Scroll sideways to see the whole diagram", "glance": "At a glance", "condition": "Condition",
-        "result": "Result", "step": "Step",
+        "result": "Result", "step": "Step", "added": "Added", "changed": "Changed", "removed": "Removed",
+        "unchanged": "No change", "unknown": "Unverified", "impact": "Impact", "who": "Who", "change": "Change",
+        "detail": "Detail",
     },
 }
 _NUMBER = re.compile(r"^([+-]?\d[\d,]*(?:\.\d+)?)\s*(.*)$")
 _DIFF = re.compile(r"^\+\s*(\d[\d,]*)\s*[-−–]\s*(\d[\d,]*)$")
 _BRANCH = re.compile(r"(?:^|\s+)(?:=>|⇒)\s+")
+# How a flow step or an impact area changes. Each is shown with an icon and a word, never color alone.
+CHANGES = ("added", "changed", "removed", "unchanged", "unknown")
+_CHANGE_WORDS = {
+    "added": "added", "new": "added", "追加": "added", "新規": "added",
+    "changed": "changed", "変更": "changed",
+    "removed": "removed", "削除": "removed", "廃止": "removed",
+    "unchanged": "unchanged", "no change": "unchanged", "影響なし": "unchanged", "変更なし": "unchanged",
+    "unknown": "unknown", "unverified": "unknown", "未確認": "unknown",
+}
+_MARKER = re.compile(r"^\[([^\]]+)\]\s+(.+)$")
+
+
+def change_kind(word: str) -> str | None:
+    return _CHANGE_WORDS.get(word.strip().lower())
+
+
+def _marked(line: str) -> tuple[str, str]:
+    """Split a leading `[added]` / `[変更]` style marker from a flow line."""
+    match = _MARKER.match(line)
+    if match and change_kind(match.group(1)) in {"added", "changed", "removed"}:
+        return change_kind(match.group(1)), match.group(2).strip()
+    return "", line
 
 
 def text(language: str, key: str) -> str:
@@ -67,10 +92,32 @@ class Compare:
 
 
 @dataclass
+class Branch:
+    condition: str
+    result: str
+    change: str = ""  # added, changed, removed, or "" for unchanged
+
+
+@dataclass
 class Step:
     actor: str
     action: str
-    branches: list[tuple[str, str]] = field(default_factory=list)  # condition, result
+    branches: list[Branch] = field(default_factory=list)
+    change: str = ""
+
+
+@dataclass
+class ImpactArea:
+    group: str  # who or where, such as a role or a screen; may be empty
+    item: str
+    change: str  # one of CHANGES
+    note: str
+
+
+@dataclass
+class Impact:
+    title: str
+    areas: list[ImpactArea]
 
 
 @dataclass
@@ -79,7 +126,7 @@ class Flow:
     steps: list[Step]
 
 
-Component = Union[Chart, Stats, Compare, Flow]
+Component = Union[Chart, Stats, Compare, Flow, Impact]
 
 
 def format_number(value: float) -> str:
@@ -161,26 +208,51 @@ def _compare(arguments: str, body: str, language: str) -> Compare | None:
 
 
 def _flow(arguments: str, body: str, language: str) -> Flow | None:
-    """Steps run top to bottom; a `condition => result` line branches from the step above it."""
+    """Steps run top to bottom; a `condition => result` line branches from the step above it.
+
+    The next plain line continues the main path, from the first branch when the step above has any.
+
+    A leading `[added]`, `[changed]`, or `[removed]` (or `[追加]`, `[変更]`, `[削除]`) marks what this
+    change does to a step or branch, so a reviewer sees the new flow and its difference at once.
+    """
     steps: list[Step] = []
     for line in body.splitlines():
-        line = line.strip()
+        change, line = _marked(line.strip())
         if not line:
             continue
         branch = _BRANCH.split(line, maxsplit=1)
         if len(branch) == 2:
             if not steps or not branch[0].strip() or not branch[1].strip():
                 return None
-            steps[-1].branches.append((branch[0].strip(), branch[1].strip()))
+            steps[-1].branches.append(Branch(branch[0].strip(), branch[1].strip(), change))
             continue
         actor, separator, action = line.partition(": ")
-        steps.append(Step(actor.strip(), action.strip()) if separator and action.strip() else Step("", line))
+        step = Step(actor.strip(), action.strip()) if separator and action.strip() else Step("", line)
+        step.change = change
+        steps.append(step)
     if not steps or (len(steps) < 2 and len(steps[0].branches) < 2):
         return None
     return Flow(arguments, steps)
 
 
-_PARSERS = {"atlas-chart": _chart, "atlas-stats": _stats, "atlas-compare": _compare, "atlas-flow": _flow}
+def _impact(arguments: str, body: str, language: str) -> Impact | None:
+    """Each line is `who / what: change | note`; the change word comes first after the colon."""
+    pairs = _pairs(body)
+    if not pairs:
+        return None
+    areas = []
+    for label, value in pairs:
+        word, _, note = value.partition(" | ")
+        change = change_kind(word)
+        if change is None:
+            return None
+        group, separator, item = label.rpartition(" / ")
+        areas.append(ImpactArea(group.strip() if separator else "", item.strip(), change, note.strip()))
+    return Impact(arguments, areas)
+
+
+_PARSERS = {"atlas-chart": _chart, "atlas-stats": _stats, "atlas-compare": _compare, "atlas-flow": _flow,
+            "atlas-impact": _impact}
 
 
 def parse(name: str, arguments: str, body: str, language: str) -> Component | None:

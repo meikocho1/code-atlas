@@ -11,6 +11,7 @@ from . import components, html_components, markdown
 from .refs import permalink
 
 
+_TASK = re.compile(r"^\[([ xX])\]\s+(.+)$")
 _REF = re.compile(r"^[^\s`]*[./][^\s`]*:\d+(?:[-–]\d+)?$")
 
 
@@ -135,6 +136,15 @@ def _block(block: markdown.Block, language: str) -> str:
         return f'<div class="atlas-table"><table><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table></div>'
     if block.kind == "list":
         tag = "ol" if block.ordered else "ul"
+        items = [_TASK.match(item) for item in block.items]
+        if all(items):
+            # A review checklist; the boxes can be ticked while reading but are not saved.
+            rows = "".join(
+                f'<li><label><input type="checkbox"{" checked" if task.group(1) != " " else ""}> '
+                f"<span>{_inline(task.group(2))}</span></label></li>"
+                for task in items
+            )
+            return f'<{tag} class="atlas-tasks">{rows}</{tag}>'
         return f"<{tag}>" + "".join(f"<li>{_inline(item)}</li>" for item in block.items) + f"</{tag}>"
     if block.kind == "quote":
         inner = "\n".join(_block(child, language) for child in block.children)

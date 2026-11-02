@@ -5,7 +5,7 @@ from __future__ import annotations
 import html
 from typing import Callable
 
-from .components import Chart, Compare, Component, Flow, Stats, format_number, text
+from .components import CHANGES, Branch, Chart, Compare, Component, Flow, Impact, Stats, format_number, text
 
 Inline = Callable[[str], str]
 
@@ -108,30 +108,66 @@ def _compare(compare: Compare, inline: Inline, language: str) -> str:
             f'<div class="atlas-compare" style="--columns:{len(compare.columns)}">{"".join(cards)}</div></div>')
 
 
+def change_chip(change: str, language: str) -> str:
+    """A labeled chip for added / changed / removed / unchanged / unverified; the icon comes from CSS."""
+    return f'<span class="atlas-change atlas-change-{change}">{text(language, change)}</span>'
+
+
+def _branch(branch: Branch, inline: Inline, language: str) -> str:
+    css_class = f' class="atlas-flow-{branch.change}"' if branch.change else ""
+    chip = change_chip(branch.change, language) if branch.change else ""
+    return (f'<li{css_class}>{chip}<span class="atlas-flow-condition">{inline(branch.condition)}</span>'
+            f'<span class="atlas-flow-arrow" aria-hidden="true">→</span>'
+            f'<span class="atlas-flow-result">{inline(branch.result)}</span></li>')
+
+
 def _flow(flow: Flow, inline: Inline, language: str) -> str:
     steps = []
     for number, step in enumerate(flow.steps, start=1):
         actor = f'<span class="atlas-flow-actor">{inline(step.actor)}</span>' if step.actor else ""
         branches = ""
         if step.branches:
-            options = "".join(
-                f'<li><span class="atlas-flow-condition">{inline(condition)}</span>'
-                f'<span class="atlas-flow-arrow" aria-hidden="true">→</span>'
-                f'<span class="atlas-flow-result">{inline(result)}</span></li>'
-                for condition, result in step.branches
-            )
+            options = "".join(_branch(branch, inline, language) for branch in step.branches)
             branches = f'<ul class="atlas-flow-branches" aria-label="{text(language, "condition")}">{options}</ul>'
-        steps.append(f'<li class="atlas-flow-step{" atlas-flow-decision" if step.branches else ""}">'
+        classes = "atlas-flow-step" + (" atlas-flow-decision" if step.branches else "")
+        classes += f" atlas-flow-{step.change}" if step.change else ""
+        chip = change_chip(step.change, language) if step.change else ""
+        steps.append(f'<li class="{classes}">'
                      f'<span class="atlas-flow-number" aria-hidden="true">{number}</span>'
-                     f'<div class="atlas-flow-card">{actor}<span class="atlas-flow-action">{inline(step.action)}</span>{branches}</div></li>')
+                     f'<div class="atlas-flow-card">{chip}{actor}<span class="atlas-flow-action">{inline(step.action)}</span>{branches}</div></li>')
     caption = f"<figcaption>{inline(flow.title)}</figcaption>" if flow.title else ""
     return f'<figure class="atlas-flow">{caption}<ol class="atlas-flow-steps">{"".join(steps)}</ol></figure>'
+
+
+def _impact(impact: Impact, inline: Inline, language: str) -> str:
+    """Group areas by who or where they are; a count per change kind sits on top."""
+    counts = "".join(
+        f'<li>{change_chip(change, language)}<span class="atlas-impact-count">{count}</span></li>'
+        for change in CHANGES
+        for count in [sum(area.change == change for area in impact.areas)] if count
+    )
+    groups: dict[str, list] = {}
+    for area in impact.areas:
+        groups.setdefault(area.group, []).append(area)
+    sections = []
+    for group, areas in groups.items():
+        rows = "".join(
+            f'<li class="atlas-impact-row atlas-impact-{area.change}">{change_chip(area.change, language)}'
+            f'<span class="atlas-impact-item">{inline(area.item)}</span>'
+            f'<span class="atlas-impact-note">{inline(area.note)}</span></li>'
+            for area in areas
+        )
+        heading = f'<p class="atlas-impact-group">{inline(group)}</p>' if group else ""
+        sections.append(f'<div class="atlas-impact-section">{heading}<ul class="atlas-impact-rows">{rows}</ul></div>')
+    caption = f"<figcaption>{inline(impact.title)}</figcaption>" if impact.title else ""
+    return (f'<figure class="atlas-impact">{caption}<ul class="atlas-impact-counts">{counts}</ul>'
+            f'<div class="atlas-impact-grid">{"".join(sections)}</div></figure>')
 
 
 def render(component: Component, inline: Inline, language: str) -> str:
     if isinstance(component, Chart):
         return {"bar": _bar, "diff": _diff, "share": _share}[component.kind](component, inline, language)
-    renderer = {Stats: _stats, Compare: _compare, Flow: _flow}[type(component)]
+    renderer = {Stats: _stats, Compare: _compare, Flow: _flow, Impact: _impact}[type(component)]
     return renderer(component, inline, language)
 
 

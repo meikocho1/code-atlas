@@ -1,0 +1,26 @@
+{
+  "skill": "review-brief",
+  "split": "train",
+  "summary": "Same expense change as approval-threshold-flow, briefed for operations staff who do not read code; the brief must surface that exactly 100000 skips approval, give reviewers a checklist, and mark what the code does not establish (who approves, rejection, downstream payment) as unverified.",
+  "request": "Use the {skill} skill to prepare the current change for review by our operations staff, who do not read code. Answer in English.",
+  "base_message": "Baseline expense submission (always auto-approved)",
+  "commit_message": null,
+  "expect": {
+    "scope": "worktree",
+    "visual": {
+      "prefer": "flowchart",
+      "allow": []
+    },
+    "facts": [
+      "exactly 100,?000",
+      "manager",
+      "(?m)^- \\[ \\] ",
+      "unverified|not verified|cannot be verified"
+    ],
+    "forbidden": [
+      "(?:at least|>=)\\s*100,?000",
+      "100,?000 or (?:more|above|higher)"
+    ],
+    "motivation": "unknown"
+  }
+}

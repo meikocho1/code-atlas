@@ -13,7 +13,7 @@ SHARED_TAIL = "Before delivering, if the `code-atlas` CLI is installed"
 SHARED_REFERENCE = "references/report-components.md"
 EXPECTED = {
     "understand-project", "understand-change", "visualize-architecture",
-    "visualize-data-flow", "review-change", "explain-business",
+    "visualize-data-flow", "review-change", "explain-business", "review-brief",
 }
 
 

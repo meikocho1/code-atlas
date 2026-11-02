@@ -11,7 +11,7 @@ import re
 from itertools import zip_longest
 
 from . import components, markdown
-from .components import Chart, Compare, Component, Flow, Stats, format_number, text
+from .components import CHANGES, Chart, Compare, Component, Flow, Impact, Stats, format_number, text
 from .html_report import report_language
 from .refs import permalink
 
@@ -19,6 +19,13 @@ BAR_CELLS = 10
 # One square per categorical slot, in the HTML palette's order; each row also prints its value.
 SQUARES = ("🟦", "🟧", "🟩", "🟨", "🟪", "🟫", "⬛", "🟥")
 SEVERITY_ICONS = {"critical": "🔴", "high": "🟠", "medium": "🟡", "low": "⚪"}
+CHANGE_ICONS = {"added": "🆕", "changed": "✏️", "removed": "➖", "unchanged": "✅", "unknown": "❓"}
+# Mermaid styles for changed flow nodes; the label also names the change, so color is never the only cue.
+FLOW_CLASSES = (
+    "  classDef added stroke:#2a78d6,stroke-width:3px",
+    "  classDef changed stroke:#4a3aa7,stroke-width:3px",
+    "  classDef removed stroke:#898781,stroke-dasharray:5 4,color:#898781",
+)
 _REF = re.compile(r"(?<!\[)`([^`\s]*[./][^`\s]*):(\d+)(?:[-–](\d+))?`(?!\]\()")
 
 
@@ -81,23 +88,52 @@ def _mermaid_label(value: str) -> str:
     return f'"{value}"'
 
 
+def _change_label(change: str, label: str, language: str) -> str:
+    return f"［{text(language, change)}］{label}" if change else label
+
+
 def _flow(flow: Flow, language: str) -> str:
     lines = ["```mermaid", "flowchart LR"]
+    styled: dict[str, list[str]] = {}
     for number, step in enumerate(flow.steps, start=1):
         label = f"{step.actor}: {step.action}" if step.actor else step.action
-        lines.append(f"  S{number}[{_mermaid_label(label)}]")
+        lines.append(f"  S{number}[{_mermaid_label(_change_label(step.change, label, language))}]")
+        if step.change:
+            styled.setdefault(step.change, []).append(f"S{number}")
         if number > 1:
-            lines.append(f"  S{number - 1} --> S{number}")
-        for index, (condition, result) in enumerate(step.branches, start=1):
-            lines.append(f"  S{number} -->|{_mermaid_label(condition)}| S{number}B{index}[{_mermaid_label(result)}]")
+            # After a decision, the main path continues from its first branch.
+            previous = f"S{number - 1}B1" if flow.steps[number - 2].branches else f"S{number - 1}"
+            lines.append(f"  {previous} --> S{number}")
+        for index, branch in enumerate(step.branches, start=1):
+            node = f"S{number}B{index}"
+            condition = _mermaid_label(_change_label(branch.change, branch.condition, language))
+            lines.append(f"  S{number} -->|{condition}| {node}[{_mermaid_label(branch.result)}]")
+            if branch.change:
+                styled.setdefault(branch.change, []).append(node)
+    if styled:
+        lines.extend(FLOW_CLASSES)
+        lines.extend(f"  class {','.join(nodes)} {change}" for change, nodes in styled.items())
     lines.append("```")
     return "\n".join(_title(flow.title) + lines)
+
+
+def _impact(impact: Impact, language: str) -> str:
+    counts = " · ".join(f"{CHANGE_ICONS[change]} {text(language, change)} {count}"
+                        for change in CHANGES
+                        for count in [sum(area.change == change for area in impact.areas)] if count)
+    rows = [[area.group, area.item, f"{CHANGE_ICONS[area.change]} {text(language, area.change)}", area.note]
+            for area in impact.areas]
+    headers = [text(language, key) for key in ("who", "item", "change", "detail")]
+    if not any(area.group for area in impact.areas):
+        rows = [row[1:] for row in rows]
+        headers = headers[1:]
+    return "\n".join(_title(impact.title) + [counts, "", _table(headers, rows)])
 
 
 def _component(component: Component, language: str) -> str:
     if isinstance(component, Chart):
         return _chart(component, language)
-    renderer = {Stats: _stats, Compare: _compare, Flow: _flow}[type(component)]
+    renderer = {Stats: _stats, Compare: _compare, Flow: _flow, Impact: _impact}[type(component)]
     return renderer(component, language)
 
 

@@ -1,6 +1,6 @@
 # Report components
 
-`code-atlas render` turns a few Markdown conventions into components: stat tiles, charts, a flow, a Before/After comparison, callouts, and severity badges. Each one is plain text in Markdown, so the saved report, `check-refs`, and hosts without the renderer still read correctly. A block that does not parse is shown as ordinary code, never dropped. `code-atlas render --format github` turns the same report into Markdown that GitHub displays in a pull request.
+`code-atlas render` turns a few Markdown conventions into components: stat tiles, charts, a flow, an impact map, a Before/After comparison, a review checklist, callouts, and severity badges. Each one is plain text in Markdown, so the saved report, `check-refs`, and hosts without the renderer still read correctly. A block that does not parse is shown as ordinary code, never dropped. `code-atlas render --format github` turns the same report into Markdown that GitHub displays in a pull request.
 
 ## Report shape
 
@@ -74,7 +74,7 @@ low: 0
 
 ### Flow
 
-Use it for steps a person or the code goes through, and for a decision with its outcomes. Each line is a step, optionally `actor: action`. A `condition => result` line branches from the step above it; the next plain line continues the main path. It renders without a script, so it also works offline, and becomes Mermaid in GitHub output. Use Mermaid instead for states, message ordering between services, or entity relationships.
+Use it for steps a person or the code goes through, and for a decision with its outcomes. Each line is a step, optionally `actor: action`. A `condition => result` line branches from the step above it; the next plain line continues the main path from the first branch, so list the branch that leads on first. It renders without a script, so it also works offline, and becomes Mermaid in GitHub output. Use Mermaid instead for states, message ordering between services, or entity relationships.
 
 ````markdown
 ```atlas-flow How cancel() decides
@@ -87,6 +87,37 @@ shipped => `ValueError`
 ````
 
 Every step and branch needs the same evidence as a diagram edge. Name the caller generically ("Caller") when the code does not show who calls it.
+
+To show what a change does to the flow, start a step or branch line with `[added]`, `[changed]`, or `[removed]` (or `[追加]`, `[変更]`, `[削除]`). Marked steps get a labeled chip and a heavier or struck-through border, so a reviewer sees the new flow and the difference in one picture. Keep removed steps in place, marked `[removed]`, rather than dropping them.
+
+````markdown
+```atlas-flow Expense approval
+Employee: submits an expense
+[added] over 100,000 => waits for a manager
+100,000 or less => approved automatically
+[added] Manager: approves a waiting expense
+```
+````
+
+### Impact map
+
+Use it to show who and what a change touches: roles, screens, operations, data, and outside parties. Each line is `who / what: change | note`. The change word comes first after the colon: `added`, `changed`, `removed`, `no change`, or `unverified` (or `追加`, `変更`, `削除`, `影響なし`, `未確認`). Lines that share a `who` are grouped, and a count per change kind sits on top. Mark an effect `unverified` when the code does not establish it; those are what a human reviewer should check first.
+
+````markdown
+```atlas-impact Who is affected
+Employee / Submitting an expense: changed | over 100,000 now waits for approval
+Manager / Approving: added | can approve a waiting expense
+Accounting / Payment: unverified | what payment does with a waiting expense is not in this repository
+```
+````
+
+### Review checklist
+
+A list whose every item starts with `[ ]` (or `[x]`) becomes a checklist: tickable boxes in HTML, and GitHub's own task list in a pull request. Use it for questions a reviewer must answer, each naming the concrete behavior and ending with its `path:line`.
+
+```markdown
+- [ ] An expense of exactly 100,000 is approved without a manager. Is that intended? (`expenses.py:14`)
+```
 
 ### Before / After
 
@@ -119,8 +150,8 @@ A heading that starts with `[critical]`, `[high]`, `[medium]`, or `[low]` gets a
 
 ## Pull requests
 
-For a pull request comment or description, render the same Markdown with `code-atlas render --format github --report - -` (stdout) or a new `.md` file. Stat tiles, charts, and comparisons become tables, with emoji squares beside the written values. Flows become Mermaid, severities become an icon and a word, and callouts and Mermaid pass through. Add `--repo <repository> --rev <commit>` so `path:line` references link to the pushed commit.
+For a pull request comment or description, render the same Markdown with `code-atlas render --format github --report - -` (stdout) or a new `.md` file. Stat tiles, charts, comparisons, and impact maps become tables, with emoji squares beside the written values. Flows become Mermaid with changed steps labeled and outlined, severities become an icon and a word, and checklists, callouts, and Mermaid pass through. Add `--repo <repository> --rev <commit>` so `path:line` references link to the pushed commit.
 
 ## Without the renderer
 
-If `code-atlas` is unavailable and you write HTML yourself, keep the same order and meaning. Render stat tiles as a row of labeled numbers and charts as labeled bars with the value written at each bar, and include the data as a table. Render a flow as numbered steps with the branches listed under their step. Render callouts with a visible label, not color alone.
+If `code-atlas` is unavailable and you write HTML yourself, keep the same order and meaning. Render stat tiles as a row of labeled numbers and charts as labeled bars with the value written at each bar, and include the data as a table. Render a flow as numbered steps with the branches listed under their step and each change written as a word. Render an impact map as a table of who, what, change, and note. Render callouts with a visible label, not color alone.

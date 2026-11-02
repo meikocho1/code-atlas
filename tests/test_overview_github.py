@@ -155,6 +155,32 @@ flowchart LR
         self.assertIn("```mermaid\nflowchart LR\n  A --> B\n```", output)
         self.assertNotIn("atlas-", output)
 
+    def test_converts_impact_maps_and_flow_changes(self):
+        output = render_github("""# Brief
+
+```atlas-impact Who is affected
+Employee / Submitting: changed | waits over 100,000
+Manager / Approving: added
+Accounting / Payment: unverified
+```
+
+```atlas-flow
+Employee: submits
+[changed] over 100,000 => waits
+[removed] Clerk: approves by hand
+```
+
+- [ ] Is exactly 100,000 meant to skip approval?
+""")
+        self.assertIn("🆕 Added 1 · ✏️ Changed 1 · ❓ Unverified 1", output)
+        self.assertIn("| Who | Item | Change | Detail |", output)
+        self.assertIn("| Employee | Submitting | ✏️ Changed | waits over 100,000 |", output)
+        self.assertIn('S1 -->|"［Changed］over 100,000"| S1B1["waits"]', output)
+        self.assertIn('S2["［Removed］Clerk: approves by hand"]', output)
+        self.assertIn("  S1B1 --> S2", output)  # The main path continues from the first branch.
+        self.assertIn("  class S1B1 changed\n  class S2 removed", output)
+        self.assertIn("- [ ] Is exactly 100,000 meant to skip approval?", output)
+
     def test_links_references_unless_already_linked(self):
         base = "https://github.com/o/r/blob/" + "c" * 40 + "/"
         output = render_github(self.REPORT, base)
