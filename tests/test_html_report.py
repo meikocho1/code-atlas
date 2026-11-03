@@ -32,7 +32,9 @@ flowchart TD
             output = path.read_text(encoding="utf-8")
         self.assertIn("<title>注文の変更</title>", output)
         self.assertIn('class="atlas-summary"', output)
-        self.assertIn('class="atlas-business"', output)
+        self.assertIn('class="atlas-section atlas-lens-business"', output)
+        self.assertIn('<h2><span class="atlas-layer atlas-layer-business">BUSINESS</span> 利用者への影響</h2>', output)
+        self.assertIn('<header class="atlas-glance"', output)
         self.assertIn("<th scope=\"col\">状態</th>", output)
         self.assertIn('class="mermaid"', output)
         self.assertIn("mermaid@11", output)
@@ -165,6 +167,63 @@ Only: one column
         self.assertIn('<code class="language-atlas-chart">order.py: many', output)
         self.assertIn("a: 1", output)
         self.assertIn("Only: one column", output)
+
+    def test_renders_flow_steps_and_branches(self):
+        output = self.render("""# Title
+
+```atlas-flow Cancel <check>
+Caller: calls `cancel()`
+Check the status
+paid => refund **needed**
+shipped => error
+```
+
+```atlas-flow
+=> no step before this branch
+only: one step
+```
+""")
+        self.assertIn('<figure class="atlas-flow"><figcaption>Cancel &lt;check&gt;</figcaption>', output)
+        self.assertIn('<span class="atlas-flow-actor">Caller</span><span class="atlas-flow-action">calls <code>cancel()</code></span>', output)
+        self.assertIn('<li class="atlas-flow-step atlas-flow-decision">', output)
+        self.assertIn('<span class="atlas-flow-condition">paid</span>', output)
+        self.assertIn('<span class="atlas-flow-result">refund <strong>needed</strong></span>', output)
+        self.assertEqual(output.count('<figure class="atlas-flow">'), 1)
+        self.assertIn("=&gt; no step before this branch", output)
+
+    def test_renders_impact_map_flow_changes_and_checklist(self):
+        output = self.render("""# 経費
+
+```atlas-impact 影響範囲
+申請者 / 経費の申請: 変更 | 10万円を超えると承認待ち
+上長 / 承認: 追加
+経理 / 支払い: 未確認 | <外部>
+```
+
+```atlas-flow
+申請者: 申請する
+[変更] 10万円を超える => 承認待ち
+[削除] Old: 手で承認する
+[added] Manager: approves
+```
+
+- [ ] 10万円ちょうどは承認なしで良いですか？
+- [x] 確認済み
+
+```atlas-impact
+A / b: maybe
+```
+""")
+        self.assertIn('<span class="atlas-change atlas-change-changed">変更</span><span class="atlas-impact-count">1</span>', output)
+        self.assertIn('<span class="atlas-change atlas-change-unknown">未確認</span><span class="atlas-impact-count">1</span>', output)
+        self.assertIn('<p class="atlas-impact-group">上長</p>', output)
+        self.assertIn('<span class="atlas-impact-note">&lt;外部&gt;</span>', output)
+        self.assertIn('<li class="atlas-flow-changed"><span class="atlas-change atlas-change-changed">変更</span>', output)
+        self.assertIn('<li class="atlas-flow-step atlas-flow-removed">', output)
+        self.assertIn('<span class="atlas-change atlas-change-added">追加</span><span class="atlas-flow-actor">Manager</span>', output)
+        self.assertIn('<ul class="atlas-tasks"><li><label><input type="checkbox"> <span>10万円ちょうどは承認なしで良いですか？</span>', output)
+        self.assertIn('<input type="checkbox" checked>', output)
+        self.assertIn("A / b: maybe", output)  # An unknown change word falls back to code.
 
     def test_severity_badges_in_headings_and_table_cells(self):
         output = self.render("""# Review

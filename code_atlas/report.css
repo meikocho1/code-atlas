@@ -153,11 +153,6 @@ section {
   border-top: 1px solid var(--line);
   scroll-margin-top: 2rem;
 }
-section.atlas-business {
-  padding: 2rem 0 0;
-  border-top: 2px solid var(--ink);
-}
-section.atlas-business h2 { color: var(--ink); }
 ul, ol { padding-left: 1.35rem; }
 li { margin: 0.35rem 0; }
 li::marker { color: var(--muted); }
@@ -222,6 +217,192 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 2rem 0; }
     font-size: 0.75rem;
   }
 }
+/* ---------- At a glance: title, conclusion, scope, and overview before the first section ---------- */
+.atlas-glance > :first-child { margin-top: 0; }
+.atlas-glance .atlas-stats-block:first-of-type { margin-top: 1.6rem; }
+.atlas-glance + section { margin-top: 2.6rem; }
+
+/* ---------- BUSINESS / SYSTEM / CODE lenses: a labeled tag, so color is never the only cue ---------- */
+.atlas-layer {
+  --lens: var(--series-1);
+  display: inline-block;
+  padding: 0.1rem 0.5rem 0.1rem 0.45rem;
+  border-left: 3px solid var(--lens);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--lens) 12%, var(--paper));
+  color: var(--ink);
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  line-height: 1.6;
+  vertical-align: 0.3em;
+}
+.atlas-layer-system { --lens: var(--series-2); }
+.atlas-layer-code { --lens: var(--series-3); }
+h2 .atlas-layer { margin-right: 0.4rem; }
+nav a { display: flex; align-items: baseline; gap: 0.45rem; }
+nav a .atlas-layer { flex: none; font-size: 0.55rem; vertical-align: 0; }
+
+/* ---------- Flow: numbered steps with branches, no script ---------- */
+.atlas-flow {
+  margin: 1.4rem 0;
+  padding: 1.1rem 1.2rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+}
+.atlas-flow figcaption { margin: 0 0 0.9rem; font-size: 0.92rem; font-weight: 700; }
+.atlas-flow-steps {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.9rem;
+  margin: 0;
+  padding: 0 0 0.3rem;
+  overflow-x: auto;
+  list-style: none;
+}
+.atlas-flow-step {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 150px;
+  max-width: 260px;
+  margin: 0;
+}
+.atlas-flow-decision { flex-grow: 1.6; max-width: 340px; }
+.atlas-flow-step:not(:last-child)::after {
+  content: "→";
+  position: absolute;
+  top: 2.05rem;
+  right: -1.45rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+.atlas-flow-number {
+  display: inline-grid;
+  place-items: center;
+  width: 1.3rem;
+  height: 1.3rem;
+  margin-bottom: 0.35rem;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+.atlas-flow-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--page);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+.atlas-flow-actor { color: var(--muted); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.03em; }
+.atlas-flow-action { font-weight: 600; }
+.atlas-flow-branches { display: grid; gap: 0.35rem; margin: 0.45rem 0 0; padding: 0; list-style: none; }
+.atlas-flow-branches li {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  background: var(--paper);
+  font-size: 0.8rem;
+}
+.atlas-flow-condition { font-weight: 700; }
+.atlas-flow-arrow { color: var(--muted); }
+
+/* ---------- Change chips: what a change does to a step or an area (icon + word) ---------- */
+.atlas-change {
+  --tone: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  width: max-content;
+  padding: 0.05rem 0.45rem 0.05rem 0.35rem;
+  border: 1px solid color-mix(in srgb, var(--tone) 55%, var(--paper));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tone) 12%, var(--paper));
+  color: var(--ink);
+  font-size: 0.68rem;
+  font-weight: 750;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.atlas-change::before { font-weight: 900; }
+.atlas-change-added { --tone: var(--series-1); }
+.atlas-change-added::before { content: "+"; }
+.atlas-change-changed { --tone: var(--series-7); }
+.atlas-change-changed::before { content: "~"; }
+.atlas-change-removed { --tone: var(--series-2); }
+.atlas-change-removed::before { content: "−"; }
+.atlas-change-unchanged::before { content: "✓"; }
+.atlas-change-unknown { --tone: var(--status-warning); border-style: dashed; }
+.atlas-change-unknown::before { content: "?"; }
+
+/* Changed steps in a flow: added and changed get a heavier border, removed is struck through. */
+.atlas-flow-added > .atlas-flow-card { border: 2px solid var(--series-1); }
+.atlas-flow-changed > .atlas-flow-card { border: 2px solid var(--series-7); }
+.atlas-flow-removed > .atlas-flow-card { border-style: dashed; opacity: 0.72; }
+.atlas-flow-removed > .atlas-flow-card > .atlas-flow-action { text-decoration: line-through; }
+.atlas-flow-branches li.atlas-flow-added { box-shadow: inset 3px 0 0 var(--series-1); }
+.atlas-flow-branches li.atlas-flow-changed { box-shadow: inset 3px 0 0 var(--series-7); }
+.atlas-flow-branches li.atlas-flow-removed { opacity: 0.72; }
+.atlas-flow-branches li.atlas-flow-removed .atlas-flow-result { text-decoration: line-through; }
+.atlas-flow-branches li .atlas-change { grid-column: 1 / -1; }
+
+/* ---------- Impact map: who and what a change touches ---------- */
+.atlas-impact {
+  margin: 1.4rem 0;
+  padding: 1.1rem 1.2rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+}
+.atlas-impact figcaption { margin: 0 0 0.7rem; font-size: 0.92rem; font-weight: 700; }
+.atlas-impact-counts { display: flex; flex-wrap: wrap; gap: 0.4rem 0.9rem; margin: 0 0 1rem; padding: 0; list-style: none; }
+.atlas-impact-counts li { display: inline-flex; align-items: center; gap: 0.35rem; margin: 0; }
+.atlas-impact-count { font-weight: 750; font-variant-numeric: tabular-nums; }
+.atlas-impact-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.75rem; }
+.atlas-impact-section { padding: 0.75rem 0.85rem; border: 1px solid var(--line); border-radius: 8px; background: var(--page); }
+.atlas-impact-group { margin: 0 0 0.5rem; font-size: 0.8rem; font-weight: 800; letter-spacing: 0.02em; }
+.atlas-impact-rows { display: grid; gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
+.atlas-impact-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15rem 0.5rem;
+  align-items: baseline;
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+.atlas-impact-item { font-weight: 650; }
+.atlas-impact-note { grid-column: 2; color: var(--muted); font-size: 0.8rem; }
+.atlas-impact-note:empty { display: none; }
+.atlas-impact-unknown { padding: 0.35rem 0.45rem; border-radius: 6px; background: color-mix(in srgb, var(--status-warning) 10%, var(--paper)); }
+
+/* ---------- Review checklist ---------- */
+.atlas-tasks { padding: 0; list-style: none; }
+.atlas-tasks li { margin: 0.4rem 0; }
+.atlas-tasks label {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.6rem;
+  align-items: start;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  cursor: pointer;
+}
+.atlas-tasks input { width: 1rem; height: 1rem; margin: 0.3rem 0 0; accent-color: var(--ink); }
+.atlas-tasks input:checked + span { color: var(--muted); }
+
 /* ---------- Reading aids ---------- */
 code.atlas-ref {
   border: 1px solid var(--line);
@@ -411,6 +592,9 @@ h2.atlas-finding .atlas-badge, h3.atlas-finding .atlas-badge { margin-right: 0.3
 
 @media (max-width: 640px) {
   .atlas-compare { grid-template-columns: 1fr; }
+  .atlas-flow-steps { flex-direction: column; gap: 1.5rem; overflow: visible; }
+  .atlas-flow-step, .atlas-flow-decision { max-width: none; width: 100%; }
+  .atlas-flow-step:not(:last-child)::after { content: "↓"; top: auto; right: auto; bottom: -1.35rem; left: 0.35rem; }
   .atlas-bar-row { grid-template-columns: minmax(0, 1fr) auto; row-gap: 0.2rem; }
   .atlas-bar-label { grid-column: 1 / -1; }
 }
@@ -435,6 +619,7 @@ h2.atlas-finding .atlas-badge, h3.atlas-finding .atlas-badge { margin-right: 0.3
   .atlas-layout { display: block; width: 100%; padding: 0; }
   main { border: 0; box-shadow: none; padding: 0; }
   section { break-inside: avoid; }
-  .atlas-chart, .atlas-stat, .atlas-callout, .atlas-compare-card { break-inside: avoid; }
+  .atlas-chart, .atlas-stat, .atlas-callout, .atlas-compare-card, .atlas-flow, .atlas-impact-section, .atlas-tasks li { break-inside: avoid; }
+  .atlas-flow-steps { flex-wrap: wrap; overflow: visible; }
   .atlas-chart-table { display: none; }
 }

@@ -4,7 +4,7 @@ Pick a visual by the question the reader cannot answer quickly from prose. A vis
 
 | Reader question | Use when the diff establishes | Best form |
 | --- | --- | --- |
-| What steps or decisions change for a person? | An observable workflow or policy branch | Business Flow (`flowchart`) |
+| What steps or decisions change for a person? | An observable workflow or policy branch | Business Flow (`atlas-flow`, or Mermaid `flowchart` for loops and merging paths) |
 | What happens in what order across actors or services? | Calls, messages, responses, or asynchronous work with meaningful ordering | Sequence Diagram |
 | Which states and transitions are now allowed? | Explicit state values and transition rules | State Diagram |
 | How are persisted entities related? | Schema changes with confirmed keys and cardinality | ER Diagram |

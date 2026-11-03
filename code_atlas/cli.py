@@ -8,8 +8,10 @@ import sqlite3
 import sys
 from pathlib import Path
 
-from .git import GitError, inspect_repo, published, resolve_ref, worktree_fingerprint
+from .git import GitError, change_stats, inspect_repo, published, resolve_ref, worktree_fingerprint
+from .github_report import render_github
 from .html_report import render_html
+from .overview import build as build_overview
 from .refs import check_refs, find_refs, permalink_base
 from .store import Store
 
@@ -63,11 +65,19 @@ def parser() -> argparse.ArgumentParser:
     export.add_argument("destination")
     export.add_argument("--format", choices=("md", "html"), default="html")
 
-    render = groups.add_parser("render", help="Render a Markdown report as HTML")
+    render = groups.add_parser("render", help="Render a Markdown report as HTML or GitHub Markdown")
     render.add_argument("--report", required=True, help="Markdown report file, or - for stdin")
-    render.add_argument("destination", help="New .html file to create")
+    render.add_argument("destination", help="New .html file to create; for --format github, a new .md file or - for stdout")
+    render.add_argument("--format", choices=("html", "github"), default="html",
+                        help="github: Markdown for a pull request comment or description")
     render.add_argument("--repo", default=".", help="Repository the report describes")
     render.add_argument("--rev", help="Commit the report cites; links path:line references to it on GitHub or GitLab")
+
+    overview = groups.add_parser("overview", help="Print a change overview (stat tiles and charts) from Git counts")
+    overview.add_argument("--repo", default=".", help="Repository to summarize")
+    overview.add_argument("--base", help="Compare with the merge base of this ref, as a pull request does")
+    overview.add_argument("--head", help="End commit; alone, compares it with its parent. Omit both for the working tree")
+    overview.add_argument("--lang", choices=("en", "ja"), default="en", help="Language of the labels")
 
     refs = groups.add_parser("check-refs", help="Check that a report's path:line references exist")
     refs.add_argument("--repo", default=".", help="Repository the report describes")
@@ -207,13 +217,35 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"{item['path']}:{span}\t{item['problem']}")
                 print(f"{len(results) - len(problems)}/{len(results)} references resolve in {rev or 'the working tree'}")
             return 1 if problems else 0
+        if args.group == "overview":
+            repo = inspect_repo(args.repo)
+            changes = change_stats(repo, args.base, args.head)
+            text = build_overview(changes, args.lang)
+            if args.json:
+                print(json.dumps({"markdown": text, "files": [vars(change) for change in changes]},
+                                 ensure_ascii=False, indent=2))
+            else:
+                print(text, end="")
+            return 0
         if args.group == "render":
             base = None
             if args.rev:
                 repo = inspect_repo(args.repo)
                 base = _link_base(repo.remote, resolve_ref(repo, args.rev), [str(repo.root)])
-            destination = render_html(_report_text(args.report), Path(args.destination), base)
-            result = {"destination": str(destination), "format": "html", "links": base}
+            if args.format == "github":
+                text = render_github(_report_text(args.report), base)
+                if args.destination == "-":
+                    print(text, end="")
+                    return 0
+                destination = Path(args.destination).expanduser()
+                if destination.suffix.lower() != ".md":
+                    raise ValueError("GitHub Markdown destination must end in .md, or be - for stdout")
+                with destination.open("x", encoding="utf-8") as stream:
+                    stream.write(text)
+                result = {"destination": str(destination.resolve()), "format": "github", "links": base}
+            else:
+                destination = render_html(_report_text(args.report), Path(args.destination), base)
+                result = {"destination": str(destination), "format": "html", "links": base}
         else:
             with Store() as store:
                 result = execute(args, store)

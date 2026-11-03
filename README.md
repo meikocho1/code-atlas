@@ -6,7 +6,7 @@ Code Atlas は、既存プロジェクトや変更を根拠付きで説明する
 
 ## できること
 
-用途ごとに独立した6つのSkillがあります。
+用途ごとに独立した7つのSkillがあります。
 
 | Skill | 用途 |
 | --- | --- |
@@ -16,6 +16,7 @@ Code Atlas は、既存プロジェクトや変更を根拠付きで説明する
 | `visualize-data-flow` | データの出所・変換・保存先を追う |
 | `review-change` | 変更に起因する具体的な不具合を調べる |
 | `explain-business` | コードの意味を利用者・運用の言葉に翻訳する |
+| `review-brief` | PR を、コードを読まない業務担当者がレビューできる形にする（影響範囲・業務フローの差分・境界値の具体例・確認チェックリスト） |
 
 説明では必要に応じて次の3レイヤーを使います。
 
@@ -41,18 +42,19 @@ code-atlas/
 │   │   └── references/
 │   │       ├── code-reading.md
 │   │       ├── diagram-selection.md
-│   │       └── report-components.md   # 6つのSkillに同じものを同梱
+│   │       └── report-components.md   # 7つのSkillに同じものを同梱
 │   ├── visualize-architecture/
 │   ├── visualize-data-flow/
 │   ├── review-change/
-│   └── explain-business/
+│   ├── explain-business/
+│   └── review-brief/
 ├── references/
 │   ├── diagram-selection.md
 │   ├── sequence.md
 │   ├── er.md
 │   ├── state.md
 │   └── c4.md
-├── code_atlas/                 # 分類・履歴CLI、HTMLレポート表示とコンポーネント
+├── code_atlas/                 # 分類・履歴CLI、変更の概要、HTML/GitHub向けレポート表示
 ├── bin/code-atlas              # 依存パッケージ不要の実行入口
 ├── eval/                       # Skillの評価シナリオとハーネス
 ├── tests/                      # CLIと評価ハーネスのテスト
@@ -63,7 +65,8 @@ code-atlas/
     ├── fixture-walkthrough.md
     ├── sample-explanation.md
     ├── business-flow.md
-    └── report-components.md    # コンポーネントを使ったレポート例
+    ├── report-components.md    # コンポーネントを使ったレポート例
+    └── review-brief.md         # 業務担当者向けレビュー資料の例
 ```
 
 `skills/<name>/` が単体の配布単位です。ルートの `references/` は設計ガイドであり、Skillが実行時に必要とする参照はSkillフォルダ内に収めています。
@@ -166,7 +169,7 @@ python3 -m code_atlas history export RUN_ID /path/to/saved-report.md --format md
 
 ### レポートのコンポーネント
 
-Markdown のままでも読める記法で書くと、HTML では KPIタイル・チャート・Before/After・注意書き・重大度バッジとして表示されます。Skill は数字や対比が文章より速く伝わる場合だけ使い、数値は `git diff --numstat` や指摘件数など実際に確認したものに限ります（[記法と使いどころ](skills/understand-change/references/report-components.md)、[レポート例](examples/report-components.md)）。
+Markdown のままでも読める記法で書くと、HTML では KPIタイル・チャート・フロー・Before/After・注意書き・重大度バッジとして表示されます。レポートは「結論 → 対象 → 変更の概要 → 各レンズ」の順に組み、要点が段落を読む前に見えるようにします。手順や分岐は文章ではなくフローで示します。数値は `git diff --numstat` や指摘件数など実際に確認したものに限ります（[記法と使いどころ](skills/understand-change/references/report-components.md)、[レポート例](examples/report-components.md)）。
 
 | 記法 | 表示 | 主な用途 |
 | --- | --- | --- |
@@ -174,7 +177,10 @@ Markdown のままでも読める記法で書くと、HTML では KPIタイル�
 | ` ```atlas-chart bar 題名 ` | 横棒グラフ | ディレクトリ別の変更量など、少数の量の比較 |
 | ` ```atlas-chart diff 題名 ` | 追加/削除の積み上げ棒 | 大きな変更がどのファイルに集中しているか |
 | ` ```atlas-chart share 題名 ` | 構成比バー | 重大度別の指摘数、コード/テスト/ドキュメントの内訳 |
+| ` ```atlas-flow 題名 ` | 番号付きの手順と分岐（JS不要） | 利用者やコードがたどる手順、判定と結果 |
+| ` ```atlas-impact 題名 ` | 影響範囲マップ（追加/変更/削除/影響なし/未確認） | 誰・どの業務に影響するか、人が確かめるべき未確認の箇所 |
 | ` ```atlas-compare ` | Before/After カード | 振る舞いの変化 |
+| `- [ ] 質問` | 確認チェックリスト（GitHub でもそのまま表示） | レビュー担当者に判断してほしいこと |
 | `> [!NOTE]` `> [!WARNING]` など | 注意書き（GitHub のアラート記法） | 解析の限界、確定できない理由 |
 | `### [high] 見出し`、表のセルに `critical` など | 重大度バッジ | レビューの指摘 |
 
@@ -185,7 +191,50 @@ Markdown のままでも読める記法で書くと、HTML では KPIタイル�
 ```
 ````
 
-データ行は `ラベル: 値` の形式で、「コロン+空白」で区切ります（チャートは最後の、KPIタイルと Before/After は最初の区切りを使います）。チャートはJavaScriptを使わずHTML/CSSだけで描き、値を各棒の横に表示します。さらに「表で見る」で同じデータを表でも確認できます。配色は色覚多様性に配慮して検証したパレットを使い、ライト・ダーク両方に対応します。解釈できないブロックは通常のコードとしてそのまま表示し、内容は失われません。
+データ行は `ラベル: 値` の形式で、「コロン+空白」で区切ります（チャートは最後の、KPIタイルと Before/After は最初の区切りを使います）。チャートはJavaScriptを使わずHTML/CSSだけで描き、値を各棒の横に表示します。さらに「表で見る」で同じデータを表でも確認できます。配色は色覚多様性に配慮して検証したパレットを使い、ライト・ダーク両方に対応します。解釈できないブロックは通常のコードとしてそのまま表示し、内容は失われません。BUSINESS / SYSTEM / CODE の見出しには色付きのタグが付き、見出しより前（タイトル・結論・対象・概要）は「ひと目で」の枠にまとまります。
+
+````markdown
+```atlas-flow cancel() の判定
+呼び出し元: `cancel(order)` を呼ぶ
+`cancel()`: 注文の状態を確かめる
+new => `cancelled` にして返金不要を返す
+shipped => `ValueError`
+```
+````
+
+フローは1行が1手順で、`役割: 動作` と書けます。`条件 => 結果` の行は直前の手順からの分岐です。次の手順は最初の分岐の先から続くので、先へ進む分岐を最初に書きます。行頭に `[追加]` `[変更]` `[削除]`（英語なら `[added]` など）を付けると、その手順や分岐がラベル付きで強調され、新しい業務フローと変わった箇所を1枚で示せます。
+
+### 業務担当者とレビューする（`review-brief`）
+
+コードを読まない人も PR のレビューに参加できるよう、`review-brief` は変更を業務の言葉に整理します。業務ルールが正しいかどうかを AI が決めるのではなく、ルールを見える形にして人に問いかけます。
+
+1. **結論**（誰に何が変わるか）と変更の概要
+2. **誰に影響するか**: `atlas-impact` で役割・画面・業務・データ・外部ごとに「追加/変更/削除/影響なし/未確認」を示す。コードで確かめられない影響は「未確認」として目立たせる
+3. **業務の流れ**: 新しいフローに、変わった手順を `[追加]` `[変更]` `[削除]` で示す
+4. **ルールを具体例で**: 境界の前後の値（例: 99,999円 / 100,000円 / 100,001円）とコードが返す結果の表
+5. **確認してほしいこと**: `- [ ]` のチェックリスト。境界値、承認者などの権限、却下や取り消しのような無い手順、見えるようになる・消えるデータを優先
+6. **確認できていないこと**と、最後に**開発者向けの根拠**（`path:line`）
+
+[出力例](examples/review-brief.md)では、「10万円を超えると上長承認」という変更から「10万円ちょうどは承認なしで通る」「誰でも承認できる」「却下の手段がない」「上長に通知されない」を確認事項として挙げています。PR に貼るときは `render --format github` を使います。コードの不具合そのものを探すのは `review-change` の役割で、両方を組み合わせると AI と人の両方でレビューできます。
+
+### 変更の概要を自動で作る（`overview`）
+
+`overview` は git の差分から、変更ファイル数・追加/削除行のKPIタイル、ファイル別の変更行数、コード/テスト/ドキュメント/設定の内訳チャートを作ります。数値はエージェントの推測ではなく git から数えるので、常に正確です。チャートは比べるものがあるとき（2ファイル以上、2種類以上）だけ出します。Skill はこの出力を、レポートの対象行の直後にそのまま貼ります。読み取り専用で、解析対象には書き込みません。
+
+```bash
+python3 -m code_atlas overview --repo . --lang ja                      # 作業ツリー（未追跡ファイルを含む）
+python3 -m code_atlas overview --repo . --head HEAD                    # 1コミット
+python3 -m code_atlas overview --repo . --base main --head HEAD        # PRと同じくマージベースから比較
+```
+
+### PR に貼る（`--format github`）
+
+同じ Markdown を、GitHub の PR コメントや説明欄でそのまま表示できる形に変換します。KPIタイル・チャート・Before/After は表になり、チャートの棒は値と並べた絵文字の四角（🟦🟧）で表します。フローは GitHub が描画できる Mermaid に、重大度は `🟠 **HIGH**` のようなアイコンと文字に変わります。注意書きと Mermaid はそのまま通します。
+
+```bash
+python3 -m code_atlas render --format github --report report.md -               # 標準出力へ
+python3 -m code_atlas render --format github --report report.md comment.md --repo . --rev HEAD   # path:line をコミットへリンク
+```
 
 ## 設計思想
 
